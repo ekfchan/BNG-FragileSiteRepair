@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-#Usage: perl extractContigs.pl <input XMAP> <_q.cmap> <_r.cmap> <first_contig_ID> <second_contig_ID> <.fsites>
+#Usage: perl extractContigs.pl <input XMAP> <_q.cmap> <_r.cmap> <first_contig_ID> <second_contig_ID>
 #assumption is that contigs on XMAP is being read from left to right and is sorted by RefStartPos
 #if .fsites file is provided, 
 
@@ -15,6 +15,23 @@ use File::Basename; 	#mod: eva chan, 8 july 2015, to allow trace path of scripts
 my $scriptspath = Cwd::abs_path(dirname($0));	#mod: eva chan, 8 july 2015
 
 open FILE, "$ARGV[0]" or die $!;
+
+#open output BED file to print stitch locations
+my $out;
+if (-e $ARGV[0]) { 
+	$out = Cwd::abs_path($ARGV[0]); }
+else {
+	die "ERROR: Input $ARGV[0] does not exist! $!\n";
+}
+$out =~ s/.xmap//i;
+$out =~ s/_temp//i;
+$out = $out."_stitchPositions.bed";
+if (!-e $out) {
+	open OUT, ">$out" or die "ERROR: Cannot open $out for writing! $!\n";
+	print OUT "#CMapId\tStart\tEnd\n"; }
+else {
+	open OUT, ">>$out" or die "ERROR: Cannot open $out for writing! $!\n";
+}
 
 my %firstContigAlignment;
 my %secondContigAlignment;
@@ -65,6 +82,11 @@ my $firstContigEnd = $firstContigAlignment{'RefEndPos'};
 my $secondContigStart = $secondContigAlignment{'RefStartPos'};
 my $padding = ($secondContigStart - $firstContigEnd) + 1;
 
+#print out stitch locations to BED file
+#print "\tPrinting out stitch locations to $out\n";
+#print "\t$firstContigAlignment{'RefContigID'}\t$firstContigAlignment{'RefEndPos'}\t$secondContigAlignment{'RefStartPos'}\n";
+print OUT "$firstContigAlignment{'RefContigID'}\t".($firstContigAlignment{'RefEndPos'}-1)."\t".($secondContigAlignment{'RefStartPos'}+1)."\n";
+
 #run script to merge two contigs
 # mod: eva chan, 8 july 2015, assuming path of extractContigs.pl to be same as gapFill.pl (rather than in ../)
 #my $mergeScript = Cwd::abs_path("../mergeContigs.pl");
@@ -79,5 +101,5 @@ system($^X, "$mergeScript", @ARGS);
 print "END OF OUTPUT extractContigs.pl\n";
 
 
-
+close OUT;
 close FILE;

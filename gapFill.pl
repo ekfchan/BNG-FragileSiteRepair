@@ -318,7 +318,7 @@ if (scalar(@secondContigList) > 0) {
 	if ($inputs{round} == 1) {
 		# Perform first alignment round
 		print "=====  Performing round $inputs{round} alignment =====\n"; 
-		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads 32 -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 16 -nosplit 2 -biaswt 0 -indel -f -maxmem 128 -T 1e-12 -BestRef 1");	
+		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads 32 -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 16 -nosplit 2 -biaswt 0 -f -maxmem 128 -T 1e-12 -BestRef 1");	
 		print "\nFIRST ROUND COMPLETE.\n\n";
 		
 		# Launch second round
@@ -338,8 +338,8 @@ if (scalar(@secondContigList) > 0) {
 	}
 	elsif ($inputs{round} == 2) {
 		# If second round, perform 2nd round of merge
-		print "======   Performing $inputs{round} alignment ======= \n"; 
-		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName3 -maxthreads 32 -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 4 -nosplit 2 -biaswt 0 -indel -f -maxmem 128 -T 1e-12 -BestRef 1");	
+		print "======   Performing round $inputs{round} alignment ======= \n"; 
+		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName3 -maxthreads 32 -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem 128 -T 1e-12 -BestRef 1");	
 		print "\nSECOND ROUND COMPLETE.\n\n";
 		#$inputs{round} = 0;
 		exit 0; #If second round, exit script gracefully to return back to first round script to do more work
@@ -375,7 +375,7 @@ if (-e "$dir/$script") {
 	print "\n";
 	
 	my $file = $outName3."_q.cmap";
-	print "Gap-filled query CMAP $inputs{q} stats:\n";
+	print "Gap-filled query CMAP $file stats:\n";
 	#chdir $dir or die "ERROR: Cannot change directory to $dir: $!\n";	
 	$cmd = "perl $dir/$script $file";
 	print "Running command: $cmd\n";

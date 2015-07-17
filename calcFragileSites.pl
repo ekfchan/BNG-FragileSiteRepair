@@ -52,7 +52,7 @@ print "Input FASTA: $fasta\n";
 if( defined $ARGV[1] ) { 
 	$outputfile = realpath($ARGV[1]); 
 } else {
-	$outputfile = realpath("./$basename.fsites.bed");  #if output file not given use $basename as prefix 
+	$outputfile = realpath("./$basename.".uc($enzyme).".fsites.bed");  #if output file not given use $basename as prefix 
 }
 if( -e $outputfile ) { 
 	die "ERROR: Output file ", $outputfile, " already exists. Please specify alternate filename. $!\n"; 
@@ -130,7 +130,7 @@ sub find_nick_sites{
 	while ($current_loc != -1){
 		if($current_loc + $elength < $slength){
 			# $result{$current_loc + $elength + 1} = 1;	#records position of base after "N" (not part of motif)
-			$result{$current_loc + $elength} = 1;	#records position at base "N"
+			$result{$current_loc + $elength} = 1;	#records position at base "N" GCTCTTCN
 		}
 		$current_loc = index($seq, $enzyme, $current_loc + 1);
 	}
@@ -140,8 +140,8 @@ sub find_nick_sites{
 	$current_loc = index($seq, $enzyme_rc, 0);
 	while ($current_loc != -1){
 		if($current_loc + $elength < $slength){
-			# $result{$current_loc} = 2;	#records position of base just before "N"
-			$result{$current_loc-1} = 2;	#records position at base "N"
+			# $result{$current_loc} = 2;	#records position of base just after "N"
+			$result{$current_loc-1} = 2;	#records position at base "N" NCTTCTCG
 		}
 		$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
 	}
@@ -153,7 +153,7 @@ sub find_nick_sites{
 		# if($current_loc - 1 >= 0){	#.. we're not searching backwards... 
 		if($current_loc + $elength < $slength){
 			# $result{$current_loc} = -1;	#records position of base just before "N"
-			$result{$current_loc-1} = -1;	#records position at base "N"
+			$result{$current_loc-1} = -1;	#records position at base "N" NGAAGAGC
 		}
 		$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
 	}
