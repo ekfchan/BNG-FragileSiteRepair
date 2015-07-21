@@ -11,9 +11,11 @@ use Getopt::Long;
 use Cwd qw(abs_path);
 use File::Basename;
 use File::Path qw(rmtree mkpath);
+use File::Copy;
 use IPC::System::Simple qw(system capture);
 #use Parallel::Iterator qw(iterate_as_array);
-use Parallel::Loops;
+#use Parallel::Loops;
+use Parallel::ForkManager;
 use DateTime;
 use DateTime::Format::Human::Duration;
 
@@ -36,7 +38,7 @@ print "\n";
 my %inputs = (); 
 my $prefix;
 $inputs{'force'}=0;
-GetOptions( \%inputs, 'fasta=s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force'); 
+GetOptions( \%inputs, 'fasta=s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'bed:s'); 
 
 if ( !exists $inputs{fasta} | !exists $inputs{xmap} | !exists $inputs{qcmap} | !exists $inputs{rcmap} | !exists $inputs{errbin} |!exists $inputs{output} | !exists $inputs{maxlab} | !exists $inputs{maxfill} | !exists $inputs{wobble} ) {
 	print "Usage: perl fragileSiteRepair.pl --fasta <reference.fasta> --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --maxlab <max_label_gap_tolerence> --maxfill <max basepairs to fill between contigs> --wobble <fragile site wobble in bp> --force <overwrite output folder>\n"; 
@@ -56,9 +58,13 @@ else {
 
 #print out input variables
 print "Input FASTA: $inputs{fasta}\n";
+if (defined $inputs{bed}) {
+	print "Input Fragiles sites BED: $inputs{bed}\n";
+}
 print "Input XMAP: $inputs{xmap}\n";
 print "Input QCMAP: $inputs{qcmap}\n";
 print "Input RMCAP: $inputs{rcmap}\n";
+print "Input ERRBIN: $inputs{errbin}\n";
 print "Output folder: $inputs{output}\n";
 print "Maximum labels between maps: $inputs{maxlab}\n";
 print "Maximum basepairs to fill between maps: $inputs{maxfill}\n";
@@ -97,11 +103,18 @@ print "\n";
 
 # Step 2: Calculate fragile sites for input FASTA
 print "===Step 2: Calculate fragile sites for input FASTA===\n";
-# Usage: perl calcFragilesSites.pl <input FASTA> [output.bed]
-$cmd = "perl $scriptspath/calcFragileSites.pl $inputs{fasta} $inputs{output}";
-print "Running command: $cmd\n";
-system($cmd);
-print "\n";
+if (defined $inputs{bed} and -e $inputs{bed}) {
+	print "Fragiles sites BED file $inputs{bed} provided.\nSkipping fragile sites calculation...\n";
+	copy("$inputs{bed}","$inputs{output}/") or die "Copy failed: $!";
+	print "\n";
+}
+else {
+	# Usage: perl calcFragilesSites.pl <input FASTA> [output.bed]
+	$cmd = "perl $scriptspath/calcFragileSites.pl $inputs{fasta} $inputs{output}";
+	print "Running command: $cmd\n";
+	system($cmd);
+	print "\n";
+}
 my $bed = findBED($inputs{output});
 $bed = abs_path($inputs{output}."/".$bed);
 #print "BED file: $bed\n";
@@ -112,7 +125,37 @@ print "===Step 3: Run gapFill.pl for each anchor map===\n";
 my @xmaps = findXMAPs($inputs{output}."/contigs");
 @xmaps = sort @xmaps;
 
+#foreach my $xmap (@xmaps) {
+	#$xmap = abs_path($inputs{output}."/contigs/$xmap");
+	#my $base = $xmap; $base =~ s/.xmap//i;
+	##print "Base: $base\n";
+	#my $qcmap = $base."_q.cmap";
+	#my $rcmap = $base."_r.cmap";
+	#if (-e $xmap and -e $qcmap and -e $rcmap) {
+		#print "XMAP: $xmap\n";
+		#print "QCMAP: $qcmap\n";
+		#print "RCMAP: $rcmap\n";
+		#print "\n";
+		
+		## usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>]
+		#$cmd = "perl $scriptspath/gapFill.pl -x $xmap -q $qcmap -r $rcmap -e $inputs{errbin} -o $base"."_fragileSiteRepaired --bed $bed --maxlab $inputs{maxlab} --maxfill $inputs{maxfill} --wobble $inputs{wobble}";
+		#print "\tRunning command: $cmd\n";
+		#print "\n";
+		##system($cmd) or die "ERROR: $cmd failed: $!\n";
+		#my @result = capture($cmd);
+		#my $log = "$base"."_fragileSiteRepaired_log.txt";
+		##print join("\t", @result);
+		#open LOG, ">$log" or die "ERROR: Cannot open $log for writing! $!\n";
+		#print LOG join("\t", @result);
+		#close LOG;
+	#}	
+#}
+
+#my $pm =  new Parallel::ForkManager($cpuCount);
+my $pm =  new Parallel::ForkManager(1);
 foreach my $xmap (@xmaps) {
+	$pm->start and next; # do the fork
+	# do work
 	$xmap = abs_path($inputs{output}."/contigs/$xmap");
 	my $base = $xmap; $base =~ s/.xmap//i;
 	#print "Base: $base\n";
@@ -135,8 +178,15 @@ foreach my $xmap (@xmaps) {
 		open LOG, ">$log" or die "ERROR: Cannot open $log for writing! $!\n";
 		print LOG join("\t", @result);
 		close LOG;
-	}	
+		print "\n";
+	}
+	$pm->finish; # do the exit in the child process
 }
+print "Waiting for all processes to finish...\n";
+$pm->wait_all_children;
+
+
+
 
 #my $pl = Parallel::Loops->new($cpuCount);
 #my %out;
