@@ -12,6 +12,7 @@ use Cwd qw(abs_path);
 use File::Basename;
 use File::Path qw(rmtree mkpath);
 use File::Copy;
+use File::Find;
 use IPC::System::Simple qw(system capture);
 #use Parallel::Iterator qw(iterate_as_array);
 #use Parallel::Loops;
@@ -123,9 +124,12 @@ $bed = abs_path($inputs{output}."/".$bed);
 
 # Step 3: Run gapFill.pl for each anchor map
 print "===Step 3: Run gapFill.pl for each anchor map===\n";
+print "Processing anchor maps in parallel fashion...\n";
 #print "\n";
 my @xmaps = findXMAPs($inputs{output}."/contigs");
 @xmaps = sort @xmaps;
+
+# normal sequential processing
 
 #foreach my $xmap (@xmaps) {
 	#$xmap = abs_path($inputs{output}."/contigs/$xmap");
@@ -153,8 +157,11 @@ my @xmaps = findXMAPs($inputs{output}."/contigs");
 	#}	
 #}
 
+
+# using Parallel::ForkManager
+
 #my $pm =  new Parallel::ForkManager($cpuCount);
-my $pm =  new Parallel::ForkManager(1);
+my $pm =  new Parallel::ForkManager(4);
 foreach my $xmap (@xmaps) {
 	$pm->start and next; # do the fork
 	# do work
@@ -186,13 +193,14 @@ foreach my $xmap (@xmaps) {
 }
 print "Waiting for all processes to finish...\n";
 $pm->wait_all_children;
+# clean up temp files
+find(\&wanted, "$inputs{output}/contigs"); 
+find(\&wanted2, "$inputs{output}/contigs"); 
 
 
-
+# using Parallel::Loops
 
 #my $pl = Parallel::Loops->new($cpuCount);
-#my %out;
-#$pl->share(\%out);
 
 #$pl->foreach( \@xmaps, sub {
 	#my $xmap = $_;
@@ -304,4 +312,11 @@ sub findQCMAPs {
 	return @qcmaps;
 }
 
+sub wanted { 
+	m/_temp/ and do { 
+		unlink $_ or warn "Could not unlink file $_\n"; }; } 
+
+sub wanted2 { 
+	m/_merged_contigs_q/ and do { 
+		unlink $_ or warn "Could not unlink file $_\n"; }; }
 	
