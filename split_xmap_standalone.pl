@@ -3,7 +3,7 @@
 
 use strict;
 use warnings;
-use lib "/home/users/psheth/perl5/lib/perl5";
+# use lib "/home/users/psheth/perl5/lib/perl5";
 use Cwd qw(getcwd cwd abs_path realpath);
 use Config::Simple;
 use IPC::System::Simple qw(system systemx capture capturex);
@@ -113,9 +113,9 @@ sub split_xmap {
 				
 				$prevContigID = $RefContigID;
 					
-				close(QCMAP);
-				close(RCMAP);
-				close(XMAP);
+				close QCMAP;
+				close RCMAP;
+				close XMAP;
 				}				
 				
 			elsif ($RefContigID == $prevContigID) {
@@ -131,8 +131,8 @@ sub split_xmap {
 				if($qcmap{$QryContigID}){
 					print QCMAP join("", @{ $qcmap{$QryContigID} }); }
 
-				close(QCMAP);
-				close(XMAP);				
+				close QCMAP;
+				close XMAP;				
 				
 				} } 
 				
