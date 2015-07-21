@@ -293,6 +293,7 @@ for (my $i=0; $i<(scalar(@secondContigList)); $i++) {
 ## << Merge Contigs >> 
 # Iterate over identified array list and merge contigs
 
+my $nomerge = 0; 
 if (scalar(@secondContigList) > 0) {
 	if (scalar(@firstContigList) == scalar(@secondContigList)) {
 		print "Gap filling between ".scalar(@secondContigList)." contigs\n\n";
@@ -373,6 +374,7 @@ if (scalar(@secondContigList) > 0) {
 	copy($inputs{x},$outName3.".xmap") or die "Copy failed: $!";
 	copy($inputs{q},$outName3."_q.cmap") or die "Copy failed: $!";
 	copy($inputs{r},$outName3."_r.cmap") or die "Copy failed: $!";
+	$nomerge = 1; 
 }
 
 
@@ -388,13 +390,15 @@ if (-e "$dir/$script") {
 	system($cmd);
 	print "\n";
 	
-	my $file = $outName3."_q.cmap";
-	print "Gap-filled query CMAP $file stats:\n";
-	#chdir $dir or die "ERROR: Cannot change directory to $dir: $!\n";	
-	$cmd = "perl $dir/$script $file";
-	print "Running command: $cmd\n";
-	system($cmd);
-	print "\n";
+	if( !$nomerge ) {
+		my $file = $outName3."_q.cmap";
+		print "Gap-filled query CMAP $file stats:\n";
+		#chdir $dir or die "ERROR: Cannot change directory to $dir: $!\n";	
+		$cmd = "perl $dir/$script $file";
+		print "Running command: $cmd\n";
+		system($cmd);
+		print "\n";
+	}
 	
 }
 else {

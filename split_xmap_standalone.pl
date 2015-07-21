@@ -112,9 +112,9 @@ sub split_xmap {
 				
 				$prevContigID = $RefContigID;
 					
-				close(QCMAP);
-				close(RCMAP);
-				close(XMAP);
+				close QCMAP;
+				close RCMAP;
+				close XMAP;
 				}				
 				
 			elsif ($RefContigID == $prevContigID) {
@@ -130,8 +130,8 @@ sub split_xmap {
 				if($qcmap{$QryContigID}){
 					print QCMAP join("", @{ $qcmap{$QryContigID} }); }
 
-				close(QCMAP);
-				close(XMAP);				
+				close QCMAP;
+				close XMAP;				
 				
 				} } 
 				

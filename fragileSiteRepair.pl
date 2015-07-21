@@ -1,9 +1,10 @@
 #!/usr/bin/perl
 
 # A wrapper script to run fragile site repair on assembly alignments to a reference using an input FASTA and alignref_final XMAP and CMAPs
-# we will first calculate potential fragiles sites based on an input fasta, then stitch assembly maps together based on alignments if the maps start and stop overlapping a fragile site
+# If .bed file of fragile sites is not provided, an input (reference) fasta is expected, from which potential fragiles sites will be calculated. 
+# Assembly maps are stitched together based on alignments if the maps start and stop overlap a fragile site
 
-# Usage: perl fragileSiteRepair.pl --fasta <reference.fasta> --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --maxlab <max_label_gap_tolerence=0> --maxfill <max basepairs to fill between contigs = 35000> --wobble <fragile site wobble in bp = 0> --force <overwrite output folder>
+# Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --maxlab <max_label_gap_tolerence=0> --maxfill <max basepairs to fill between contigs = 35000> --wobble <fragile site wobble in bp = 0> --force <overwrite output folder>
 
 use strict;
 use warnings;
@@ -41,13 +42,15 @@ my $prefix;
 $inputs{'force'}=0;
 GetOptions( \%inputs, 'fasta=s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'bed:s'); 
 
-if ( !exists $inputs{fasta} | !exists $inputs{xmap} | !exists $inputs{qcmap} | !exists $inputs{rcmap} | !exists $inputs{errbin} |!exists $inputs{output} | !exists $inputs{maxlab} | !exists $inputs{maxfill} | !exists $inputs{wobble} ) {
-	print "Usage: perl fragileSiteRepair.pl --fasta <reference.fasta> --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --maxlab <max_label_gap_tolerence> --maxfill <max basepairs to fill between contigs> --wobble <fragile site wobble in bp> --force <overwrite output folder>\n"; 
+my $hasbed = 0; 
+if ( (!exists $inputs{fasta} & !exists $inputs{bed}) | !exists $inputs{xmap} | !exists $inputs{qcmap} | !exists $inputs{rcmap} | !exists $inputs{errbin} | !exists $inputs{output} | !exists $inputs{maxlab} | !exists $inputs{maxfill} | !exists $inputs{wobble} ) {
+	print "Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bd>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --maxlab <max_label_gap_tolerence> --maxfill <max basepairs to fill between contigs> --wobble <fragile site wobble in bp> --force <overwrite output folder>\n"; 
 	exit 0; 
 }
 else {
-	$prefix = $inputs{xmap}; $prefix =~ s/.xmap//i;
-	foreach my $key (keys %inputs) {
+	# $prefix = $inputs{xmap}; $prefix =~ s/.xmap//i;
+	# foreach my $key (keys %inputs) {
+	foreach my $key ("xmap","qcmap","rcmap","errbin","output") {
 		#print "Key: $key Value: $inputs{$key}\n";
 		if ($inputs{$key} =~ /[a-z]/i) {
 			#print "Key: $key Value: $inputs{$key}\n";
@@ -55,13 +58,25 @@ else {
 			#print "$inputs{$key}\n";
 		}
 	}
+	$prefix = basename(abs_path($inputs{xmap}), ".xmap")
+}
+
+if( exists $inputs{bed} ) {
+	$hasbed = 1; 
+	$inputs{bed} =~ /[a-z]/i; 
+	$inputs{bed} = abs_path($inputs{bed});
+	if( exists $inputs{fasta} ) {
+		print "$inputs{bed} fragile sites file already provided. abs_path($inputs{fasta}) will be ignored.\n" 
+	}
+} 
+else {
+	$hasbed = 0; 
+	$inputs{fasta} =~ /[a-z]/i; 
+	$inputs{fasta} = abs_path($inputs{fasta});
 }
 
 #print out input variables
-print "Input FASTA: $inputs{fasta}\n";
-if (defined $inputs{bed}) {
-	print "Input Fragiles sites BED: $inputs{bed}\n";
-}
+if( $hasbed==0 ) { print "Input FASTA: $inputs{fasta}\n"; } else { print "Input BED: $inputs{bed}\n"; }
 print "Input XMAP: $inputs{xmap}\n";
 print "Input QCMAP: $inputs{qcmap}\n";
 print "Input RMCAP: $inputs{rcmap}\n";
@@ -106,10 +121,11 @@ print "\n";
 
 # Step 2: Calculate fragile sites for input FASTA
 print "===Step 2: Calculate fragile sites for input FASTA===\n";
-if (defined $inputs{bed} and -e $inputs{bed}) {
-	print "Fragiles sites BED file $inputs{bed} provided.\nSkipping fragile sites calculation...\n";
-	copy("$inputs{bed}","$inputs{output}/") or die "Copy failed: $!";
-	print "\n";
+my $bed; 
+if ( $hasbed==1 and -e $inputs{bed}) {
+	print "Fragiles sites BED file $inputs{bed} provided.\nSkipping fragile sites calculation...\n\n";
+	#copy("$inputs{bed}","$inputs{output}/") or die "Copy failed: $!";
+	$bed = $inputs{bed};
 }
 else {
 	# Usage: perl calcFragilesSites.pl <input FASTA> [output.bed]
@@ -117,10 +133,17 @@ else {
 	print "Running command: $cmd\n";
 	system($cmd);
 	print "\n";
+	# my $bed = findBED($inputs{output});
+	$bed = findBED($inputs{output});
+	$bed = abs_path($inputs{output}."/".$bed);
+	#print "BED file: $bed\n";
+	
+	my $stime = DateTime->now;
+	my $etime = DateTime->now;
+	my $dtime = DateTime::Format::Human::Duration->new();
+	print 'Spent time at this step: ', $dtime->format_duration_between($etime, $stime); print "\n\n";
+
 }
-my $bed = findBED($inputs{output});
-$bed = abs_path($inputs{output}."/".$bed);
-#print "BED file: $bed\n";
 
 # Step 3: Run gapFill.pl for each anchor map
 print "===Step 3: Run gapFill.pl for each anchor map===\n";
@@ -320,3 +343,4 @@ sub wanted2 {
 	m/_merged_contigs_q/ and do { 
 		unlink $_ or warn "Could not unlink file $_\n"; }; }
 	
+
