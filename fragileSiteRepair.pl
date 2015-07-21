@@ -125,7 +125,7 @@ $bed = abs_path($inputs{output}."/".$bed);
 # Step 3: Run gapFill.pl for each anchor map
 print "===Step 3: Run gapFill.pl for each anchor map===\n";
 print "Processing anchor maps in parallel fashion...\n";
-#print "\n";
+print "\n";
 my @xmaps = findXMAPs($inputs{output}."/contigs");
 @xmaps = sort @xmaps;
 
@@ -161,7 +161,7 @@ my @xmaps = findXMAPs($inputs{output}."/contigs");
 # using Parallel::ForkManager
 
 #my $pm =  new Parallel::ForkManager($cpuCount);
-my $pm =  new Parallel::ForkManager(4);
+my $pm =  new Parallel::ForkManager(8);
 foreach my $xmap (@xmaps) {
 	$pm->start and next; # do the fork
 	# do work

@@ -80,7 +80,7 @@ my $cpu  = $info->device( CPU => my %options );
 #printf "There are %d CPUs\n"  , $cpu->count || 1;
 my $cpuCount = $cpu->count;
 #get system RAM
-my $mem = (&totalmem / 1024 / 1024); 
+my $mem = (((&totalmem / 1024) / 1024)) / 1024; 
 
 print "\n";
 
