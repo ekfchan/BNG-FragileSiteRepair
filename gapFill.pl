@@ -315,7 +315,7 @@ if (scalar(@secondContigList) > 0) {
 		
 	# Align new _q.cmap with merged contigs back to _r.cmap
 
-	my $veto = "-output-veto-filter \"(_intervals.txt|.err)\"";
+	my $veto = "-output-veto-filter \"(_intervals.txt|.err|.map)\"";
 	#$veto = $veto." -output-veto-filter .err";
 	#print "Veto: $veto\n";
 	if ($inputs{round} == 1) {
