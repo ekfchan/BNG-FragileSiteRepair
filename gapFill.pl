@@ -315,13 +315,13 @@ if (scalar(@secondContigList) > 0) {
 		
 	# Align new _q.cmap with merged contigs back to _r.cmap
 
-	my $veto = "-output-veto-filter \"(_intervals.txt|.err|.map)\"";
+	my $veto = "-output-veto-filter \"(_intervals.txt|.err|.maprate)\"";
 	#$veto = $veto." -output-veto-filter .err";
 	#print "Veto: $veto\n";
 	if ($inputs{round} == 1) {
 		# Perform first alignment round
 		print "=====  Performing round $inputs{round} alignment =====\n"; 
-		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads 32 -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 16 -nosplit 2 -biaswt 0 -f -maxmem 128 -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e}");	
+		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads 32 -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 16 -nosplit 2 -biaswt 0 -f -maxmem 128 -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e} -stdout -stderr");	
 		print "\nFIRST ROUND COMPLETE.\n\n";
 		
 		# Launch second round
@@ -342,7 +342,7 @@ if (scalar(@secondContigList) > 0) {
 	elsif ($inputs{round} == 2) {
 		# If second round, perform 2nd round of merge
 		print "======   Performing round $inputs{round} alignment ======= \n"; 
-		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName3 -maxthreads 32 -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem 128 -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e}");	
+		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName3 -maxthreads 32 -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem 128 -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e} -stdout -stderr");	
 		print "\nSECOND ROUND COMPLETE.\n\n";
 		#$inputs{round} = 0;
 		exit 0; #If second round, exit script gracefully to return back to first round script to do more work

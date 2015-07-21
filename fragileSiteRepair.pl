@@ -39,7 +39,7 @@ $inputs{'force'}=0;
 GetOptions( \%inputs, 'fasta=s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force'); 
 
 if ( !exists $inputs{fasta} | !exists $inputs{xmap} | !exists $inputs{qcmap} | !exists $inputs{rcmap} | !exists $inputs{errbin} |!exists $inputs{output} | !exists $inputs{maxlab} | !exists $inputs{maxfill} | !exists $inputs{wobble} ) {
-	print "Usage: perl fragileSiteRepair.pl --fasta <reference.fasta> --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --maxlab <max_label_gap_tolerence=0> --maxfill <max basepairs to fill between contigs = 35000> --wobble <fragile site wobble in bp = 0> --force <overwrite output folder>\n"; 
+	print "Usage: perl fragileSiteRepair.pl --fasta <reference.fasta> --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --maxlab <max_label_gap_tolerence> --maxfill <max basepairs to fill between contigs> --wobble <fragile site wobble in bp> --force <overwrite output folder>\n"; 
 	exit 0; 
 }
 else {
