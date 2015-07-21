@@ -25,7 +25,7 @@ else {
 }
 $out =~ s/.xmap//i;
 $out =~ s/_temp//i;
-$out = $out."_stitchPositions.bed";
+$out = $out."_fragileSiteRepaired_stitchPositions.bed";
 if (!-e $out) {
 	open OUT, ">$out" or die "ERROR: Cannot open $out for writing! $!\n";
 	print OUT "#CMapId\tStart\tEnd\n"; }
@@ -85,7 +85,7 @@ my $padding = ($secondContigStart - $firstContigEnd) + 1;
 #print out stitch locations to BED file
 #print "\tPrinting out stitch locations to $out\n";
 #print "\t$firstContigAlignment{'RefContigID'}\t$firstContigAlignment{'RefEndPos'}\t$secondContigAlignment{'RefStartPos'}\n";
-print OUT "$firstContigAlignment{'RefContigID'}\t".($firstContigAlignment{'RefEndPos'}-1)."\t".($secondContigAlignment{'RefStartPos'}+1)."\n";
+print OUT "$firstContigAlignment{'RefContigID'}\t".int(($firstContigAlignment{'RefEndPos'}-1))."\t".int(($secondContigAlignment{'RefStartPos'}+1))."\n";
 
 #run script to merge two contigs
 # mod: eva chan, 8 july 2015, assuming path of extractContigs.pl to be same as gapFill.pl (rather than in ../)

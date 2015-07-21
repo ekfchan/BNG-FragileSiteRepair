@@ -2,7 +2,7 @@
 
 # A wrapper script to gap-fill: stitch together genome maps that are sufficiently close to each other and (optionally) overlapping fragile sites as predicted from reference genome map.
 
-# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>]
+# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>]
 
 # Details: 
 # * Assumption: that contigs on XMAP is being read from left to right and is sorted by RefStartPos
@@ -23,10 +23,10 @@ use Getopt::Long qw(:config bundling);
 
 ## << usage statement and variable initialisation >>
 my %inputs = (); 
-GetOptions( \%inputs, 'x|xmap=s', 'q|qcmap=s', 'r|rcmap=s', 'o|output|prefix=s', 'bed|b:s', 'round:i', 'maxlab:i', 'maxfill:i', 'wobble:i'); 
+GetOptions( \%inputs, 'x|xmap=s', 'q|qcmap=s', 'r|rcmap=s', 'e|errbin=s', 'o|output|prefix=s', 'bed|b:s', 'round:i', 'maxlab:i', 'maxfill:i', 'wobble:i'); 
 
-if( !exists $inputs{x} | !exists $inputs{q} | !exists $inputs{r} | !exists $inputs{o} ) {
-	print "usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round=1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>]\n"; 
+if( !exists $inputs{x} | !exists $inputs{q} | !exists $inputs{r} | !exists $inputs{e} | !exists $inputs{o} ) {
+	print "usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round=1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>]\n"; 
 	exit 0; 
 }
 
@@ -315,10 +315,13 @@ if (scalar(@secondContigList) > 0) {
 		
 	# Align new _q.cmap with merged contigs back to _r.cmap
 
+	my $veto = "-output-veto-filter _intervals.txt";
+	$veto = $veto." -output-veto-filter .err";
+	#print "Veto: $veto\n";
 	if ($inputs{round} == 1) {
 		# Perform first alignment round
 		print "=====  Performing round $inputs{round} alignment =====\n"; 
-		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads 32 -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 16 -nosplit 2 -biaswt 0 -f -maxmem 128 -T 1e-12 -BestRef 1");	
+		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads 32 -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 16 -nosplit 2 -biaswt 0 -f -maxmem 128 -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e}");	
 		print "\nFIRST ROUND COMPLETE.\n\n";
 		
 		# Launch second round
@@ -339,7 +342,7 @@ if (scalar(@secondContigList) > 0) {
 	elsif ($inputs{round} == 2) {
 		# If second round, perform 2nd round of merge
 		print "======   Performing round $inputs{round} alignment ======= \n"; 
-		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName3 -maxthreads 32 -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem 128 -T 1e-12 -BestRef 1");	
+		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName3 -maxthreads 32 -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem 128 -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e}");	
 		print "\nSECOND ROUND COMPLETE.\n\n";
 		#$inputs{round} = 0;
 		exit 0; #If second round, exit script gracefully to return back to first round script to do more work

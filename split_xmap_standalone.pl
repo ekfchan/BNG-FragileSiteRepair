@@ -143,6 +143,6 @@ sub split_xmap {
 				}
 	
 	print "Splitting $xmap complete.\n";
-	
+	exit 0;
 	
 }

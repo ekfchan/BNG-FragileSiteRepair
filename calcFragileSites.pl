@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Usage: perl calcFragilesSites.pl <input FASTA> [output.bed]
+# Usage: perl calcFragileSites.pl <input FASTA> [output.bed]
 # Example: perl calcFragileSites.pl hg19_chromosome.fa hg19_chromosome_bbspqi.bed
 
 use strict;
@@ -49,9 +49,13 @@ else {
 print "Input FASTA: $fasta\n";	
 
 # check optional output variable
-if( defined $ARGV[1] ) { 
+if( defined $ARGV[1] and !-d $ARGV[1]) { 
 	$outputfile = realpath($ARGV[1]); 
-} else {
+} 
+elsif ( defined $ARGV[1] and -d $ARGV[1]) {
+	$outputfile = $ARGV[1]."/".$basename."_".uc($enzyme).".fsites.bed";
+}
+else {
 	$outputfile = realpath("./$basename.".uc($enzyme).".fsites.bed");  #if output file not given use $basename as prefix 
 }
 if( -e $outputfile ) { 
@@ -130,7 +134,8 @@ sub find_nick_sites{
 	while ($current_loc != -1){
 		if($current_loc + $elength < $slength){
 			# $result{$current_loc + $elength + 1} = 1;	#records position of base after "N" (not part of motif)
-			$result{$current_loc + $elength} = 1;	#records position at base "N" GCTCTTCN
+			#$result{$current_loc + $elength} = 1;	#records position at base "N" GCTCTTCN
+			$result{$current_loc} = 1;	#records position at base "G" GCTCTTCN
 		}
 		$current_loc = index($seq, $enzyme, $current_loc + 1);
 	}
@@ -141,7 +146,8 @@ sub find_nick_sites{
 	while ($current_loc != -1){
 		if($current_loc + $elength < $slength){
 			# $result{$current_loc} = 2;	#records position of base just after "N"
-			$result{$current_loc-1} = 2;	#records position at base "N" NCTTCTCG
+			#$result{$current_loc-1} = 2;	#records position at base "N" NCTTCTCG
+			$result{$current_loc + $elength} = 2;	#records position at base "G" NCTTCTCG
 		}
 		$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
 	}
@@ -153,7 +159,8 @@ sub find_nick_sites{
 		# if($current_loc - 1 >= 0){	#.. we're not searching backwards... 
 		if($current_loc + $elength < $slength){
 			# $result{$current_loc} = -1;	#records position of base just before "N"
-			$result{$current_loc-1} = -1;	#records position at base "N" NGAAGAGC
+			#$result{$current_loc-1} = -1;	#records position at base "N" NGAAGAGC
+			$result{$current_loc + $elength} = -1;	#records position at base "C" NGAAGAGC
 		}
 		$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
 	}
@@ -199,8 +206,8 @@ sub calcFragilesSitesBED {
 			# eva chan:: Because the nick sites have been sorted, we would expect the motif on the reverse strand to be encontered first (firstNick) in Type II	
 			# $pos1 = $pos1 - $elength;
 			# $pos2 = $pos2 + $elength;
-			$pos1 = $pos1 + $elength; 	#reverse strand
-			$pos2 = $pos2 - $elength; 	#forward strand
+			#$pos1 = $pos1 + $elength; 	#reverse strand
+			#$pos2 = $pos2 - $elength; 	#forward strand
 			$curtype = "TypeII";
 		}
 		elsif(($strand1 == 1) && ($strand2 == 2) && ($pos2 - $pos1 <= $bp_t3)) {
@@ -214,12 +221,14 @@ sub calcFragilesSitesBED {
 			# Type IV
 			# $pos1 = $pos1 - length($enzyme);
 			# $pos2 = $pos2 + length($enzyme);
-			$pos1 = $pos1 + $elength;
-			$pos2 = $pos2 - $elength;
+			#$pos1 = $pos1 + $elength;
+			#$pos2 = $pos2 - $elength;
 			$curtype = "TypeIV";
 		} else {
 			next;
 		}
+		$pos1 = int($pos1);
+		$pos2 = int($pos2);
 		my $lineBed = "$count\t$pos1\t$pos2\t$curtype";
 		push @fsitesBed, $lineBed;
 		$fsiteCount++;
