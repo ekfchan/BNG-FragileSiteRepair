@@ -3,7 +3,6 @@
 
 use strict;
 use warnings;
-use lib "/home/users/psheth/perl5/lib/perl5";
 use Cwd qw(getcwd cwd abs_path realpath);
 use Config::Simple;
 use IPC::System::Simple qw(system systemx capture capturex);
