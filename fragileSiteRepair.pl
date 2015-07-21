@@ -179,7 +179,7 @@ foreach (@qcmaps) {
 	#print "QCMAP: $_\n";
 	$_ = abs_path($inputs{output}."/contigs/$_");
 }
-my $input = join("-i ",@qcmaps);
+my $input = join(" -i ",@qcmaps);
 $cmd = "cd $inputs{output}; ~/tools/RefAligner -i $input -merge -o $prefix"."_fragileSiteRepaired -minsites 0";
 print "Running command: $cmd\n";
 print "\n";
