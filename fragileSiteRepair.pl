@@ -40,39 +40,30 @@ print "\n";
 my %inputs = (); 
 my $prefix;
 $inputs{'force'}=0;
-GetOptions( \%inputs, 'fasta=s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'bed:s'); 
+GetOptions( \%inputs, 'fasta:s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'bed:s'); 
 
 my $hasbed = 0; 
-if ( (!exists $inputs{fasta} & !exists $inputs{bed}) | !exists $inputs{xmap} | !exists $inputs{qcmap} | !exists $inputs{rcmap} | !exists $inputs{errbin} | !exists $inputs{output} | !exists $inputs{maxlab} | !exists $inputs{maxfill} | !exists $inputs{wobble} ) {
+if ( (!exists $inputs{fasta} & !exists $inputs{bed}) | !exists $inputs{xmap} | !exists $inputs{qcmap} | !exists $inputs{rcmap} | !exists $inputs{errbin} | !exists $inputs{output} ) {
 	print "Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bd>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --maxlab <max_label_gap_tolerence> --maxfill <max basepairs to fill between contigs> --wobble <fragile site wobble in bp> --force <overwrite output folder>\n"; 
 	exit 0; 
 }
 else {
-	# $prefix = $inputs{xmap}; $prefix =~ s/.xmap//i;
-	# foreach my $key (keys %inputs) {
-	foreach my $key ("xmap","qcmap","rcmap","errbin","output") {
-		#print "Key: $key Value: $inputs{$key}\n";
-		if ($inputs{$key} =~ /[a-z]/i) {
-			#print "Key: $key Value: $inputs{$key}\n";
+	foreach my $key ("xmap","qcmap","rcmap","errbin","output","bed","fasta") {
+		if (exists $inputs{$key} and $inputs{$key} =~ /[a-z]/i) {
 			$inputs{$key} = abs_path($inputs{$key});
-			#print "$inputs{$key}\n";
 		}
 	}
-	$prefix = basename(abs_path($inputs{xmap}), ".xmap")
-}
+	$prefix = basename(abs_path($inputs{xmap}), ".xmap");
+	if( !exists $inputs{maxfill} ) { $inputs{maxfill} = 10000; }
+	if( !exists $inputs{wobble} ) { $inputs{wobble} = 250; }
+	if( !exists $inputs{maxlab} ) { $inputs{maxlab} = 0; }
 
-if( exists $inputs{bed} ) {
-	$hasbed = 1; 
-	$inputs{bed} =~ /[a-z]/i; 
-	$inputs{bed} = abs_path($inputs{bed});
-	if( exists $inputs{fasta} ) {
-		print "$inputs{bed} fragile sites file already provided. abs_path($inputs{fasta}) will be ignored.\n" 
-	}
-} 
-else {
-	$hasbed = 0; 
-	$inputs{fasta} =~ /[a-z]/i; 
-	$inputs{fasta} = abs_path($inputs{fasta});
+	if( exists $inputs{bed} ) {
+		$hasbed = 1; 
+		if( exists $inputs{fasta} ) {
+			print "$inputs{bed} fragile sites file already provided.\n$inputs{fasta} will be ignored.\n" 
+		}
+	} 
 }
 
 #print out input variables
@@ -254,10 +245,10 @@ find(\&wanted2, "$inputs{output}/contigs");
 
 
 # Step 4: Merge individual fragileSiteRepaired anchor maps
-print "===Step 4: Merge individual fragileSiteRepaired anchor maps===\n";
+print "\n===Step 4: Merge individual fragileSiteRepaired anchor maps===\n";
 my @qcmaps = findQCMAPs($inputs{output}."/contigs");
 @qcmaps = sort @qcmaps;
-print "Merging ".scalar(@qcmaps)." fragileSiteRepaired anchor maps...\n";
+print "Merging ".scalar(@qcmaps)." fragileSiteRepaired anchor maps...\n\n";
 foreach (@qcmaps) {
 	#print "QCMAP: $_\n";
 	$_ = abs_path($inputs{output}."/contigs/$_");

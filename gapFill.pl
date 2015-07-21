@@ -29,7 +29,7 @@ my %inputs = ();
 GetOptions( \%inputs, 'x|xmap=s', 'q|qcmap=s', 'r|rcmap=s', 'e|errbin=s', 'o|output|prefix=s', 'bed|b:s', 'round:i', 'maxlab:i', 'maxfill:i', 'wobble:i'); 
 
 if( !exists $inputs{x} | !exists $inputs{q} | !exists $inputs{r} | !exists $inputs{e} | !exists $inputs{o} ) {
-	print "usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round=1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>]\n"; 
+	print "usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round=1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 10000>] [--wobble <fragile site wobble in bp = 250>]\n"; 
 	exit 0; 
 }
 
@@ -38,9 +38,9 @@ my $scriptspath = Cwd::abs_path(dirname($0));	#gapFill.pl relies on two addition
 #my $round = 1; 
 #if( !exists $inputs{round} or $inputs{round}<1 or $inputs{round}>2 ) { $inputs{round}=1; }
 if( !exists $inputs{round} ) { $inputs{round} = 1; }
-my $maxBp = 35000; 
+my $maxBp = 10000; 
 if( exists $inputs{maxfill} ) { $maxBp = $inputs{maxfill}; }
-my $wobble = 0; 
+my $wobble = 250; 
 if( exists $inputs{wobble} ) { $wobble = $inputs{wobble}; }
 my $maxlab = 0; 
 if( exists $inputs{maxlab} ) { $maxlab = $inputs{maxlab}; }
@@ -333,7 +333,8 @@ if (scalar(@secondContigList) > 0) {
 	if ($inputs{round} == 1) {
 		# Perform first alignment round
 		print "=====  Performing round $inputs{round} alignment =====\n"; 
-		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e} -stdout -stderr");	
+		# system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e} -stdout -stderr");
+		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e} -stdout");	
 		print "\nFIRST ROUND COMPLETE.\n\n";
 		
 		# Launch second round
@@ -354,7 +355,8 @@ if (scalar(@secondContigList) > 0) {
 	elsif ($inputs{round} == 2) {
 		# If second round, perform 2nd round of merge
 		print "======   Performing round $inputs{round} alignment ======= \n"; 
-		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName3 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e} -stdout -stderr");	
+		# system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName3 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e} -stdout -stderr");
+		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName3 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e} -stdout");	
 		print "\nSECOND ROUND COMPLETE.\n\n";
 		#$inputs{round} = 0;
 		exit 0; #If second round, exit script gracefully to return back to first round script to do more work
