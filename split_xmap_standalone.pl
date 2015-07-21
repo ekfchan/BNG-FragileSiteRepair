@@ -85,9 +85,9 @@ sub split_xmap {
 				my $rcmapName = $contig_prefix.$RefContigID."_r.cmap";
 				my $qcmapName = $contig_prefix.$RefContigID."_q.cmap";
 				
-				open (XMAP, ">>$molPath/$xmapName");
-				open (RCMAP, ">>$molPath/$rcmapName");
-				open (QCMAP, ">>$molPath/$qcmapName");
+				open (XMAP, ">>$molPath/$xmapName") or die "ERROR: $!\n";
+				open (RCMAP, ">>$molPath/$rcmapName") or die "ERROR: $!\n";
+				open (QCMAP, ">>$molPath/$qcmapName") or die "ERROR: $!\n";
 				
 				foreach my $s (@xmapheader) {
 					$s =~ s/^\s+//;
@@ -122,8 +122,8 @@ sub split_xmap {
 				my $qcmapName = $contig_prefix.$RefContigID."_q.cmap";
 				my $xmapName = $contig_prefix.$RefContigID.".xmap";
 				
-				open (XMAP, ">>$molPath/$xmapName");
-				open (QCMAP, ">>$molPath/$qcmapName");				
+				open (XMAP, ">>$molPath/$xmapName") or die "ERROR: $!\n";
+				open (QCMAP, ">>$molPath/$qcmapName") or die "ERROR: $!\n";				
 
 				print XMAP $xline; 
 				

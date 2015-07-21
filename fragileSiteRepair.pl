@@ -92,10 +92,12 @@ else {
 print "\n";
 
 
+
 # Step 1: Split input XMAP into individual anchor maps
 print "===Step 1: Split merged input XMAP into individual anchor maps===\n";
 # Usage: perl split_xmap_standalone.pl [xmap] [_q.cmap] [_r.cmap] [_contig prefix] [output folder]
-my $cmd = "perl $scriptspath/split_xmap_standalone.pl $inputs{xmap} $inputs{qcmap} $inputs{rcmap} $prefix"."_contig $inputs{output}/contigs";
+my $splitprefix = basename($prefix);
+my $cmd = "perl $scriptspath/split_xmap_standalone.pl $inputs{xmap} $inputs{qcmap} $inputs{rcmap} $splitprefix"."_contig $inputs{output}/contigs";
 print "Running command: $cmd\n";
 system($cmd);
 print "\n";
@@ -230,7 +232,7 @@ foreach (@qcmaps) {
 	$_ = abs_path($inputs{output}."/contigs/$_");
 }
 my $input = join(" -i ",@qcmaps);
-$cmd = "cd $inputs{output}; ~/tools/RefAligner -i $input -merge -o $prefix"."_fragileSiteRepaired -minsites 0";
+$cmd = "cd $inputs{output}; ~/tools/RefAligner -i $input -merge -o $splitprefix"."_fragileSiteRepaired -minsites 0";
 print "Running command: $cmd\n";
 print "\n";
 system($cmd);
@@ -251,7 +253,7 @@ if (-e "$dir/$script") {
 	system($cmd);
 	print "\n";
 	
-	my $file = "$inputs{output}/$prefix"."_fragileSiteRepaired.cmap";
+	my $file = "$inputs{output}/$splitprefix"."_fragileSiteRepaired.cmap";
 	print "Fragile site repaired merged CMAP $file stats:\n";
 	#chdir $dir or die "ERROR: Cannot change directory to $dir: $!\n";	
 	$cmd = "perl $dir/$script $file";
