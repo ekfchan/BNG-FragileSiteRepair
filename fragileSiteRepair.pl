@@ -248,13 +248,21 @@ find(\&wanted2, "$inputs{output}/contigs");
 print "\n===Step 4: Merge individual fragileSiteRepaired anchor maps===\n";
 my @qcmaps = findQCMAPs($inputs{output}."/contigs");
 @qcmaps = sort @qcmaps;
+
+#generate file with list of maps to be merged
+my $mergeFile = "$inputs{output}/contigs/mergeList.txt";
+open (LIST, ">$mergeFile") or die "ERROR: Could not open $mergeFile: $!\n";
 print "Merging ".scalar(@qcmaps)." fragileSiteRepaired anchor maps...\n\n";
 foreach (@qcmaps) {
 	#print "QCMAP: $_\n";
 	$_ = abs_path($inputs{output}."/contigs/$_");
+	print LIST "$_\n";
 }
-my $input = join(" -i ",@qcmaps);
-$cmd = "cd $inputs{output}; ~/tools/RefAligner -i $input -merge -o $splitprefix"."_fragileSiteRepaired -minsites 0";
+close LIST;
+
+#my $input = join(" -i ",@qcmaps);
+#$cmd = "cd $inputs{output}; ~/tools/RefAligner -i $input -merge -o $splitprefix"."_fragileSiteRepaired -minsites 0";
+$cmd = "cd $inputs{output}; ~/tools/RefAligner -if $mergeFile -merge -o $splitprefix"."_fragileSiteRepaired -minsites 0";
 print "Running command: $cmd\n";
 print "\n";
 system($cmd);
