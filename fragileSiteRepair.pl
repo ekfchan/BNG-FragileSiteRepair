@@ -20,6 +20,7 @@ use IPC::System::Simple qw(system capture);
 use Parallel::ForkManager;
 use DateTime;
 use DateTime::Format::Human::Duration;
+#use Data::Dumper;
 
 print "\n";
 my $dtStart = DateTime->now;
@@ -119,6 +120,7 @@ if ( $hasbed==1 and -e $inputs{bed}) {
 	$bed = $inputs{bed};
 }
 else {
+	my $stime = DateTime->now;
 	# Usage: perl calcFragilesSites.pl <input FASTA> [output.bed]
 	$cmd = "perl $scriptspath/calcFragileSites.pl $inputs{fasta} $inputs{output}";
 	print "Running command: $cmd\n";
@@ -129,7 +131,6 @@ else {
 	$bed = abs_path($inputs{output}."/".$bed);
 	#print "BED file: $bed\n";
 	
-	my $stime = DateTime->now;
 	my $etime = DateTime->now;
 	my $dtime = DateTime::Format::Human::Duration->new();
 	print 'Spent time at this step: ', $dtime->format_duration_between($etime, $stime); print "\n\n";
@@ -206,6 +207,7 @@ foreach my $xmap (@xmaps) {
 	$pm->finish; # do the exit in the child process
 }
 print "Waiting for all processes to finish...\n";
+print "\n";
 $pm->wait_all_children;
 # clean up temp files
 find(\&wanted, "$inputs{output}/contigs"); 
@@ -245,7 +247,7 @@ find(\&wanted2, "$inputs{output}/contigs");
 
 
 # Step 4: Merge individual fragileSiteRepaired anchor maps
-print "\n===Step 4: Merge individual fragileSiteRepaired anchor maps===\n";
+print "\n===Step 4: Merge individual fragileSiteRepaired anchor maps===\n\n";
 my @qcmaps = findQCMAPs($inputs{output}."/contigs");
 @qcmaps = sort @qcmaps;
 
@@ -268,10 +270,32 @@ print "\n";
 system($cmd);
 print "\n";
 
+print "Generating merged stitchPositions BED...";
+my $mergedBED = "$inputs{output}/$splitprefix"."_fragileSiteRepaired_stitchPositions.bed";
+open BEDOUT, ">$mergedBED" or die "ERROR: Could not open $mergedBED: $!\n";
+my @beds = findBEDs("$inputs{output}/contigs");
+my @bedOut;
+print BEDOUT "#CMapId\tStart\tEnd\n";
+foreach my $bedFile (@beds) {
+	open BEDFILE, "<$bedFile" or die "ERROR: Could not open $bedFile: $!\n";
+	while (<BEDFILE>) {
+		if ($_ =~ /^#/) {
+			next;
+		}
+		chomp($_);
+		#print BEDOUT "$_\n";
+		push @bedOut, $_;
+	}
+}
+@bedOut = sortBED(\@bedOut);
+my $stitchCount = scalar(@bedOut);
+print BEDOUT join("\n",@bedOut);
+print "done\n\n";
 
 # Step 5: Calculate stats for merged fragileSiteRepaired CMAP
 print "===Step 5: Calculate stats for merged fragileSiteRepaired CMAP===\n";
 print "\n"; 
+print "Total fragile sites repaired (stitched): $stitchCount\n\n";
 # usage: calc_cmap_stats.pl <CMAP_File>
 my $dir = glob("~/scripts/HybridScaffold/scripts");
 my $script = "calc_cmap_stats.pl";
@@ -306,6 +330,38 @@ print 'Total elapsed time: ', $span->format_duration_between($dtEnd, $dtStart); 
 
 
 
+sub sortBED {
+	my @bedIn = @{$_[0]};
+	#create array of arrays
+	my @AoA;
+	foreach my $line (@bedIn) {
+		chomp($line);
+		#print "$line\n";
+		my @s = split("\t",$line);
+		push (@AoA, [$s[0],$s[1],$s[2]]);
+	}
+	# my @sortedAoA = map  { $_->[0] }
+					# sort { $a->[0] <=> $b->[0] }
+					# map  { [ $_, $_->[0] ] }
+					# @AoA;
+	my @sortedAoA = sort { $a->[0] <=> $b->[0] || $a->[1] <=> $b->[1] || $a->[2] <=> $b->[2] } @AoA;
+	#print Dumper(@sortedAoA)."\n";
+	
+	my @bedOut;
+	for my $aref ( @sortedAoA ) {
+		#print "\t [ @$aref ],\n";
+		my $lineOut = "@$aref[0]\t@$aref[1]\t@$aref[2]";
+		push @bedOut, $lineOut;		
+	}	
+	
+	# foreach my $line (@sortedAoA) {
+		# foreach my $value (@{$line}) {
+			# my $lineOut = "$value->[0]\t$value->[1]\t$value->[2]\n";
+			# push @bedOut, $lineOut;
+		# }
+	# }
+	return @bedOut;
+}
 
 sub findBED {
 	my $in = shift;
@@ -314,6 +370,31 @@ sub findBED {
 	closedir(DIR);
 	
 	return $bed[0];
+}
+
+sub findBEDs {
+	my $in = shift;
+	opendir(DIR, $in);
+	my @beds = grep(/\.bed$/,readdir(DIR));
+	closedir(DIR);
+	
+	#@beds = map { $_->[1] }
+	#		sort { $a->[0] <=> $b->[0] }
+	#		map { [ ($_ =~ /(\d+)/)[0] || 0, $_ ] } @beds;
+		
+	#@beds = sort { ($a =~ /(\d+)/)[0] <=> ($b =~ /(\d+)/)[0] } @beds;
+	foreach (@beds) {
+		$_ = $in."/".$_;
+	}
+	#@beds = sort { lc($a) cmp lc($b) } @beds;
+	#@beds = sort { getnum($a) <=> getnum($b) } @beds;
+	
+	return @beds;
+}
+
+sub getnum {
+	my $v = shift;
+	return( ($v =~ /(\d+)/)[0] || 0);
 }
 
 sub findXMAPs {
