@@ -62,7 +62,7 @@ else {
 	if( exists $inputs{bed} ) {
 		$hasbed = 1; 
 		if( exists $inputs{fasta} ) {
-			print "$inputs{bed} fragile sites file already provided.\n$inputs{fasta} will be ignored.\n" 
+			print "$inputs{bed} fragile sites file already provided.\n$inputs{fasta} will be ignored.\n";
 		}
 	} 
 }
@@ -116,7 +116,7 @@ print "===Step 2: Calculate fragile sites for input FASTA===\n";
 my $bed; 
 if ( $hasbed==1 and -e $inputs{bed}) {
 	print "Fragiles sites BED file $inputs{bed} provided.\nSkipping fragile sites calculation...\n\n";
-	#copy("$inputs{bed}","$inputs{output}/") or die "Copy failed: $!";
+	copy("$inputs{bed}","$inputs{output}/") or warn "Copy of input BED $inputs{bed} failed: $!";
 	$bed = $inputs{bed};
 }
 else {
@@ -191,7 +191,7 @@ foreach my $xmap (@xmaps) {
 		print "RCMAP: $rcmap\n";
 		print "\n";
 		
-		# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>]
+		# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>]
 		$cmd = "perl $scriptspath/gapFill.pl -x $xmap -q $qcmap -r $rcmap -e $inputs{errbin} -o $base"."_fragileSiteRepaired --bed $bed --maxlab $inputs{maxlab} --maxfill $inputs{maxfill} --wobble $inputs{wobble}";
 		print "\tRunning command: $cmd\n";
 		print "\n";
@@ -275,7 +275,7 @@ my $mergedBED = "$inputs{output}/$splitprefix"."_fragileSiteRepaired_stitchPosit
 open BEDOUT, ">$mergedBED" or die "ERROR: Could not open $mergedBED: $!\n";
 my @beds = findBEDs("$inputs{output}/contigs");
 my @bedOut;
-print BEDOUT "#CMapId\tStart\tEnd\n";
+print BEDOUT "#CMapId\tStart\tEnd\tType\n";
 foreach my $bedFile (@beds) {
 	open BEDFILE, "<$bedFile" or die "ERROR: Could not open $bedFile: $!\n";
 	while (<BEDFILE>) {
@@ -287,7 +287,9 @@ foreach my $bedFile (@beds) {
 		push @bedOut, $_;
 	}
 }
-@bedOut = sortBED(\@bedOut);
+my ($bedOut_ref, $typeCount_ref) = sortBEDandCount(\@bedOut);
+@bedOut = @$bedOut_ref;
+my %typeCount = %$typeCount_ref;
 my $stitchCount = scalar(@bedOut);
 print BEDOUT join("\n",@bedOut);
 print "done\n\n";
@@ -295,7 +297,13 @@ print "done\n\n";
 # Step 5: Calculate stats for merged fragileSiteRepaired CMAP
 print "===Step 5: Calculate stats for merged fragileSiteRepaired CMAP===\n";
 print "\n"; 
-print "Total fragile sites repaired (stitched): $stitchCount\n\n";
+print "Total fragile sites repaired (stitched): $stitchCount\n";
+foreach my $type (sort keys %typeCount) {
+	print "\t$type: $typeCount{$type}\n";
+}
+
+print "\n";
+
 # usage: calc_cmap_stats.pl <CMAP_File>
 my $dir = glob("~/scripts/HybridScaffold/scripts");
 my $script = "calc_cmap_stats.pl";
@@ -330,15 +338,19 @@ print 'Total elapsed time: ', $span->format_duration_between($dtEnd, $dtStart); 
 
 
 
-sub sortBED {
+sub sortBEDandCount {
 	my @bedIn = @{$_[0]};
 	#create array of arrays
 	my @AoA;
+	my %typeCount;
 	foreach my $line (@bedIn) {
 		chomp($line);
 		#print "$line\n";
 		my @s = split("\t",$line);
-		push (@AoA, [$s[0],$s[1],$s[2]]);
+		push (@AoA, [$s[0],$s[1],$s[2],$s[3]]);
+		if ($s[3] =~ m/Type/i) {
+			$typeCount{$s[3]}++;
+		}
 	}
 	# my @sortedAoA = map  { $_->[0] }
 					# sort { $a->[0] <=> $b->[0] }
@@ -350,7 +362,7 @@ sub sortBED {
 	my @bedOut;
 	for my $aref ( @sortedAoA ) {
 		#print "\t [ @$aref ],\n";
-		my $lineOut = "@$aref[0]\t@$aref[1]\t@$aref[2]";
+		my $lineOut = "@$aref[0]\t@$aref[1]\t@$aref[2]\t@$aref[3]";
 		push @bedOut, $lineOut;		
 	}	
 	
@@ -360,7 +372,7 @@ sub sortBED {
 			# push @bedOut, $lineOut;
 		# }
 	# }
-	return @bedOut;
+	return (\@bedOut,\%typeCount);
 }
 
 sub findBED {

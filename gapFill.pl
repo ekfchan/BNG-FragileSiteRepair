@@ -71,6 +71,7 @@ my $r_sites=0;
 my $mergeCount=0;
 my @firstContigList = ();
 my @secondContigList= ();
+my @fsiteTypeList = ();
 
 my $idOffset = 100000;
 
@@ -194,13 +195,12 @@ if( exists $inputs{bed} ) {
 				my @s = split(/\t/,$line);
 				if ($s[0] eq $r_mapIds[0]) {
 					$fragileSites++;
-					#CMapId	Start	End	Type	Strand
+					#CMapId	Start	End	Type
 					my %fsites_line = (
 						"CMapId"  => "$s[0]",
 						"Start" => "$s[1]", 
 						"End"  => "$s[2]",
-						"Type"  => "$s[3]", 
-						# "Strand"  => "$s[4]",
+						"Type"  => "$s[3]",
 						"line" => $line
 					);
 					push @fsites, \%fsites_line;
@@ -253,6 +253,7 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 						foreach my $hash (@fsites) {
 							my $start = $hash->{'Start'};
 							my $end = $hash->{'End'};
+							my $type = $hash->{'Type'};
 							my $distance = $end - $start;
 							my $min = $start - $wobble;
 							my $max = $end + $wobble;
@@ -260,6 +261,7 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 								next if ($firstQryContigID eq $previous);
 								push @firstContigList,$firstQryContigID;
 								push @secondContigList,$secondQryContigID;
+								push @fsiteTypeList, $type;
 								$previous = $firstQryContigID;
 							}
 						}
@@ -301,7 +303,7 @@ if (scalar(@secondContigList) > 0) {
 		my $extractScript = $scriptspath."/extractContigs.pl";
 		
 		# Perform first merge
-		my @ARGS = ($inputs{x}, $inputs{q}, $inputs{r}, $firstContigList[0], $secondContigList[0]);
+		my @ARGS = ($inputs{x}, $inputs{q}, $inputs{r}, $firstContigList[0], $secondContigList[0],$fsiteTypeList[0]);
 		my $cwd = cwd();
 		print "Running command: ".$^X." $extractScript ". join(" ",@ARGS)."\n";
 		system($^X, "$extractScript", @ARGS);
@@ -314,7 +316,7 @@ if (scalar(@secondContigList) > 0) {
 		for (my $i=1; $i<(scalar(@secondContigList)); $i++) {
 			next if ( ($secondContigList[$i] eq $secondContigList[0]) ) ;
 			#for (my $i=1; $i<(3); $i++) {
-			@ARGS = ($inputs{x}, $outName, $inputs{r}, $firstContigList[$i], $secondContigList[$i]);
+			@ARGS = ($inputs{x}, $outName, $inputs{r}, $firstContigList[$i], $secondContigList[$i], $fsiteTypeList[$i]);
 			print "Running command: ".$^X." $extractScript ". join(" ",@ARGS)."\n";
 			system($^X, "$extractScript", @ARGS);
 			print "QryContigID $firstContigList[$i] merged with QryContigID $secondContigList[$i] into QueryContigID ".($firstContigList[$i]+$idOffset)."\n";
