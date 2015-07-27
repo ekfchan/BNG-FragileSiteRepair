@@ -16,16 +16,23 @@ OPTIONS
 			File need not be in same dir as scripts or cwd. 
 	--xmap input.xmap
 			Required. Alignment file from Pipeline from which fragile site stitching is 
-			to be performed. 
+			to be performed. Should ideally be: 
+			/output/contigs/exp_refineFinal1/alignref_final/EXP_REFINEFINAL1.xmap
 			File need not be in same dir as scripts or cwd. 
 	--qcmap input_q.cmap
 			Required. Query cmap corresponding to --xmap
+			Should ideally be: 
+			/output/contigs/exp_refineFinal1/alignref_final/EXP_REFINEFINAL1_q.cmap
 			File need not be in same dir as scripts or cwd. 
 	--rcmap input_r.cmap
 			Required. Reference cmap corresponding to --xmap
+			Should ideally be: 
+			/output/contigs/exp_refineFinal1/alignref_final/EXP_REFINEFINAL1_r.cmap
 			File need not be in same dir as scripts or cwd. 
 	--errbin input.errbin
 			Required. Error parameters corresponding to --xmap.  
+			Should ideally be: 
+			/output/contigs/exp_refineFinal1/alignref_final/EXP_REFINEFINAL1.errbin
 			File need not be in same dir as scripts or cwd. 
 			**TODO:  May be possible to make this optional in the future**
 	--output output_folder
