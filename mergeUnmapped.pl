@@ -33,8 +33,19 @@ foreach my $key ("ref","oricmap","fsrcmap","errbin","xmap") {
 	if ( ! -e $inputs{$key} ) { die "Input file $inputs{$key} does not exists: $!\n"; }
 }
 
-if( ! exists $inputs{outdir} ) { $inputs{outdir} = cwd(); }
-my $outprefix = basename(abs_path($inputs{oricmap}), ".cmap");
+if( ! exists $inputs{outdir} ) { 
+	$inputs{outdir} = cwd(); 
+	$inputs{outdir} = $inputs{outdir}."/fsiterepaired_final";
+}
+my $oriprefix = basename(abs_path($inputs{oricmap}), ".cmap");
+
+# check output folder
+if (-d $inputs{outdir}) {
+	die "ERROR: Output directory $inputs{outdir} exists.\n";
+} else {
+	mkdir($inputs{outdir}) or die "ERROR: Cannot create output directory $inputs{outdir}: $!\n";
+}
+print "\n";
 
 
 # << get RefAligner options >> 
@@ -58,15 +69,16 @@ $opts =~ s/-maxthreads\s[^\s]+\s//g;
 $opts =~ s/-maxmem\s[^\s]+\s//g; 
 $opts =~ s/-output-veto-filter\s[^\s]+\s//g; 
 $opts =~ s/-readparameters\s[^\s]+\s//g; 
-$opts =~ s/-stderr\s\s//g; 
-$opts =~ s/-stdout\s\s//g; 
-print $opts, "\n"; 
+$opts =~ s/-stderr\s+//g; 
+$opts =~ s/-stdout\s+//g; 
+# print $opts, "\n"; 
 
 
 # << get unaligned cmap >> 
-my $unmappedfile = $inputs{outdir}."/".$outprefix."_unmapped";
-my $veto = q/-output-veto-filter '(_intervals.txt|.err|.maprate|[a-z|A-Z].map)$'/;
-my $cmd = "~/tools/RefAligner -ref ".$inputs{ref}." -i ".$inputs{oricmap}." -o ".$inputs{outdir}."/".$outprefix."  -stdout ".$veto." -readparameters ".$inputs{errbin}." -BestRef 1 -f -unmapped ".$unmappedfile; 
+my $unmappedfile = $inputs{outdir}."/".$oriprefix."_unmapped";
+# my $veto = q/-output-veto-filter '(_intervals.txt|.err|.maprate|[].map)$'/;
+my $ofilter = q/-output-filter '(.[cx]map)$'/;
+my $cmd = "~/tools/RefAligner -ref ".$inputs{ref}." -i ".$inputs{oricmap}." -o ".$inputs{outdir}."/".$oriprefix."  -stdout ".$ofilter." -readparameters ".$inputs{errbin}." -BestRef 1 -f -unmapped ".$unmappedfile; 
 ## ~~~~~~~~~~~~~
 # $cmd = $cmd." -maxmem ".$mem."  -maxthreads ".$cpuCount; 
 # $cmd = $cmd." ".$opts; 
@@ -104,5 +116,29 @@ my $finalcmap = $inputs{outdir}."/FSITEREPAIRED_FINAL";
 $cmd = "~/tools/RefAligner -merge -i ".$unmappedfile.".cmap  -i ".$inputs{oricmap}." -o ".$finalcmap." -stdout -f "; 
 print "Running command: \n\n $cmd \n\n";
 system($cmd); 
+
+
+# << calculate cmap statistics >> 
+# usage: calc_cmap_stats.pl <CMAP_File>
+my $script = glob("~/scripts/HybridScaffold/scripts/calc_cmap_stats.pl");
+if (-e $script) {
+	my $tmpcmap = $inputs{oricmap};
+	print "\nOriginal consensus CMAP $tmpcmap stats:\n";
+	my $cmd = "perl $script $tmpcmap"; system($cmd);
+	print "\n";
+
+	$tmpcmap = $unmappedfile.".cmap";
+	print "\nUnmapped query CMAP $tmpcmap stats:\n";
+	$cmd = "perl $script $tmpcmap"; system($cmd);
+	
+	$tmpcmap = $inputs{fsrcmap};
+	print "\nInput fsiteRepaired CMAP $tmpcmap stats:\n";
+	$cmd = "perl $script $tmpcmap"; system($cmd);
+
+	$tmpcmap = $finalcmap.".cmap";
+	print "\nFinal merged fragile-site-repaired CMAP $tmpcmap stats:\n";
+	$cmd = "perl $script $tmpcmap"; system($cmd);
+}
+else { print "perl script $script not found\n"; }
 
 
