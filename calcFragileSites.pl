@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
-# Usage: perl calcFragileSites.pl <input FASTA> [output.bed]
-# Example: perl calcFragileSites.pl hg19_chromosome.fa hg19_chromosome_bbspqi.bed
+# Usage: perl calcFragileSites.pl <input FASTA> [output.bed] [sequence buffer in bp]
+# Example: perl calcFragileSites.pl hg19_chromosome.fa hg19_chromosome_bbspqi.bed 500
 
 use strict;
 use warnings;
@@ -15,8 +15,8 @@ use Bio::SeqIO;
 use Data::Dumper;
 
 # usage statement
-if( scalar(@ARGV)<1 or scalar(@ARGV)>2 ) {
-	print "usage: $0 <input.fa> [output.bed]\n"; 
+if( scalar(@ARGV)<1 or scalar(@ARGV)>3 ) {
+	print "usage: $0 <input.fa> [output.bed] [sequence buffer in bp]\n"; 
 	exit 0; 
 }
 
@@ -26,7 +26,8 @@ my $bp_t2 = 500; #maximum distance between nicks on opposite strands (moving awa
 my $bp_t3 = 500; #maximum distance between nicks on same strands (moving towards each other) to count as TypeIII
 my $bp_t4 = 500; #maximum distance between nicks on same strands (moving away from each other) to count as TypeIV
 
-my $enzyme = "GCTCTTC"; #BspQI... motif is actually "GCTCTTCN" with nicking occuring after the "N"
+my $enzyme1 = "GCTCTTC"; #BspQI... motif is actually "GCTCTTCN" with nicking occuring after the "N"
+my $enzyme2 = "CACGAG"; #BssSI
 
 my $outputfile; 
 my $basename;
@@ -53,28 +54,36 @@ if( defined $ARGV[1] and !-d $ARGV[1]) {
 	$outputfile = realpath($ARGV[1]); 
 } 
 elsif ( defined $ARGV[1] and -d $ARGV[1]) {
-	$outputfile = $ARGV[1]."/".$basename."_".uc($enzyme).".fsites.bed";
+	$outputfile = $ARGV[1]."/".$basename."_".uc($enzyme1)."_".uc($enzyme2).".fsites.withSeqs.bed";
 }
 else {
-	$outputfile = realpath("./$basename.".uc($enzyme).".fsites.bed");  #if output file not given use $basename as prefix 
+	$outputfile = realpath("./$basename.".uc($enzyme1)."_".uc($enzyme2).".fsites.withSeqs.bed");  #if output file not given use $basename as prefix 
 }
 if( -e $outputfile ) { 
 	die "ERROR: Output file ", $outputfile, " already exists. Please specify alternate filename. $!\n"; 
 }
+
+#check input sequence buffer variable
+my $buffer=500;	
+if (defined $ARGV[2] && int($ARGV[2]>0)) {
+		$buffer = int($ARGV[2]);
+}
+
 print "Output BED: $outputfile\n\n";
 
 print "\tTypeI fragile site threashold (bp): $bp_t1\n";
 print "\tTypeII fragile site threashold (bp): $bp_t2\n";
 print "\tTypeIII fragile site threashold (bp): $bp_t3\n";
 print "\tTypeIV fragile site threashold (bp): $bp_t4\n\n";
+print "\tExtracting sequences +/- $buffer"."bp from fragile site start/end positions\n";
 
-
+print "\n";
 ## Read input fasta and find nicks and fragiles sites
 #my $seqin = Bio::SeqIO->new( -format => 'Fasta' , -file => "$fasta");
 my $seqin = Bio::SeqIO->new( -file => "$fasta");
 my $count=1;
 my @fsitesBed;
-my $fsitesHeaderBed = "#Nickase: $enzyme\n#CMapId\tStart\tEnd\tType";
+my $fsitesHeaderBed = "#Nickase 1: $enzyme1\n#Nickase 2: $enzyme2\n#CMapId\tStart\tEnd\tType\tSequence";
 while((my $seqobj = $seqin->next_seq())) {   #for each sequence in FASTA (e.g. each contig)
 	my $seq = $seqobj->seq();
 	my $id  = $seqobj->display_id();
@@ -82,7 +91,7 @@ while((my $seqobj = $seqin->next_seq())) {   #for each sequence in FASTA (e.g. e
 
 	# find nick sites
 	print "\tHeader: $id Length: $length\n";
-	my %result = find_nick_sites($seq,$enzyme);	
+	my %result = find_nick_sites($seq,$enzyme1,$enzyme2);	
 	
 	# sort nick sites by genomic position, creating an ordered array of hash references
 	my @nick_sites;
@@ -94,7 +103,22 @@ while((my $seqobj = $seqin->next_seq())) {   #for each sequence in FASTA (e.g. e
 
 	#calc fragile sites for each seq contig
 	my (@fsiteBed) = calcFragilesSitesBED(@nick_sites);
-	push @fsitesBed, @fsiteBed;	
+	
+	#extract sequence +/- $ARGV[2] or 500bp
+	my @fsiteBedSeq;
+	foreach my $line (@fsiteBed) {
+		#print "\t\tBED Line: $line\n";
+		#my $lineBed = "$count\t$pos1\t$pos2\t$curtype";
+		my @s = split("\t",$line);
+		my $start = $s[1]-$buffer;
+		my $end = $s[2]+$buffer;
+		my $seq = $seqobj->subseq($start,$end);
+		my $lineOut = "$s[0]\t$s[1]\t$s[2]\t$s[3]\t$seq";
+		push @fsiteBedSeq, $lineOut;
+	}
+	
+	#push @fsitesBed, @fsiteBed;	
+	push @fsitesBed, @fsiteBedSeq;
 	$count++;
 }
 
@@ -124,46 +148,85 @@ print "\n";
 	
 sub find_nick_sites{
 	# Find position of the "N" base in the enzyme motif "GCTCTTCN"
-	my ($seq, $enzyme) = @_;
+	my ($seq, $enzyme1, $enzyme2) = @_;
 	my %result;
 	my $slength = length($seq);
-	my $elength = length($enzyme);
+	my $elength1 = length($enzyme1);
+	my $elength2 = length($enzyme2);
 	
-	# Find the enzymes in the forward strand, starting from the first nucleotide!!!
-	my $current_loc = index($seq, $enzyme, 0);
+	# Find the first enzyme in the forward strand, starting from the first nucleotide!!!
+	my $current_loc = index($seq, $enzyme1, 0);
 	while ($current_loc != -1){
-		if($current_loc + $elength < $slength){
+		if($current_loc + $elength1 < $slength){
 			# $result{$current_loc + $elength + 1} = 1;	#records position of base after "N" (not part of motif)
 			#$result{$current_loc + $elength} = 1;	#records position at base "N" GCTCTTCN
 			$result{$current_loc} = 1;	#records position at base "G" GCTCTTCN
 		}
-		$current_loc = index($seq, $enzyme, $current_loc + 1);
+		$current_loc = index($seq, $enzyme1, $current_loc + 1);
 	}
 	
-	# Find the reverse(enzymes) in the forward strand, starting from the first nucleotide!!!
-	my $enzyme_rc = reverse($enzyme);
-	$current_loc = index($seq, $enzyme_rc, 0);
+	# Find the second enzyme in the forward strand, starting from the first nucleotide!!!
+	$current_loc = index($seq, $enzyme2, 0);
 	while ($current_loc != -1){
-		if($current_loc + $elength < $slength){
+		if($current_loc + $elength2 < $slength){
+			# $result{$current_loc + $elength + 1} = 1;	#records position of base after "N" (not part of motif)
+			#$result{$current_loc + $elength} = 1;	#records position at base "N" GCTCTTCN
+			$result{$current_loc} = 1;	#records position at base "G" GCTCTTCN
+		}
+		$current_loc = index($seq, $enzyme2, $current_loc + 1);
+	}
+	
+	# Find the reverse(first enzyme) in the forward strand, starting from the first nucleotide!!!
+	my $enzyme_rc1 = reverse($enzyme1);
+	$current_loc = index($seq, $enzyme_rc1, 0);
+	while ($current_loc != -1){
+		if($current_loc + $elength1 < $slength){
 			# $result{$current_loc} = 2;	#records position of base just after "N"
 			#$result{$current_loc-1} = 2;	#records position at base "N" NCTTCTCG
-			$result{$current_loc + $elength} = 2;	#records position at base "G" NCTTCTCG
+			$result{$current_loc + $elength1} = 2;	#records position at base "G" NCTTCTCG
 		}
-		$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
+		$current_loc = index($seq, $enzyme_rc1, $current_loc + 1);
+	}
+	
+	# Find the reverse(second enzyme) in the forward strand, starting from the first nucleotide!!!
+	my $enzyme_rc2 = reverse($enzyme2);
+	$current_loc = index($seq, $enzyme_rc2, 0);
+	while ($current_loc != -1){
+		if($current_loc + $elength2 < $slength){
+			# $result{$current_loc} = 2;	#records position of base just after "N"
+			#$result{$current_loc-1} = 2;	#records position at base "N" NCTTCTCG
+			$result{$current_loc + $elength2} = 2;	#records position at base "G" NCTTCTCG
+		}
+		$current_loc = index($seq, $enzyme_rc2, $current_loc + 1);
+	}
+	
+	# Find the rc(first enzyme) in the forward strand, staring from the first nucleotide!!!
+	$enzyme_rc1 =~ tr/ACGTUN/TGCAAN/;
+	$current_loc = index($seq, $enzyme_rc1, 0);
+	while ($current_loc != -1){
+		# if($current_loc - 1 >= 0){	#.. we're not searching backwards... 
+		if($current_loc + $elength1 < $slength){
+			# $result{$current_loc} = -1;	#records position of base just before "N"
+			#$result{$current_loc-1} = -1;	#records position at base "N" NGAAGAGC
+			$result{$current_loc + $elength1} = -1;	#records position at base "C" NGAAGAGC
+		}
+		$current_loc = index($seq, $enzyme_rc1, $current_loc + 1);
 	}
 	
 	# Find the rc(enzymes) in the forward strand, staring from the first nucleotide!!!
-	$enzyme_rc =~ tr/ACGTUN/TGCAAN/;
-	$current_loc = index($seq, $enzyme_rc, 0);
+	$enzyme_rc2 =~ tr/ACGTUN/TGCAAN/;
+	$current_loc = index($seq, $enzyme_rc2, 0);
 	while ($current_loc != -1){
 		# if($current_loc - 1 >= 0){	#.. we're not searching backwards... 
-		if($current_loc + $elength < $slength){
+		if($current_loc + $elength2 < $slength){
 			# $result{$current_loc} = -1;	#records position of base just before "N"
 			#$result{$current_loc-1} = -1;	#records position at base "N" NGAAGAGC
-			$result{$current_loc + $elength} = -1;	#records position at base "C" NGAAGAGC
+			$result{$current_loc + $elength2} = -1;	#records position at base "C" NGAAGAGC
 		}
-		$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
+		$current_loc = index($seq, $enzyme_rc2, $current_loc + 1);
 	}
+	
+	#unique sort hash
 			
 	return %result;
 }
@@ -180,7 +243,7 @@ sub calcFragilesSitesBED {
 	my (@nickSites) = @_;
 	my @fsitesBed;
 	my $fsiteCount=0;
-	my $elength = length($enzyme); 	#enzyme length
+	#my $elength = length($enzyme); 	#enzyme length
 
 	for(my $i = 0; $i < scalar(@nickSites) - 1; $i++){
 		my $firstNick = $nickSites[$i];
