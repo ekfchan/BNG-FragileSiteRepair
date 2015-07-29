@@ -22,9 +22,7 @@ use DateTime;
 use DateTime::Format::Human::Duration;
 #use Data::Dumper;
 
-print "\n";
 my $dtStart = DateTime->now;
-print "Start time: "; print join ' ', $dtStart->ymd, $dtStart->hms; print "\n";
 
 #get number of CPU cores
 use Sys::Info;
@@ -35,7 +33,6 @@ my $cpu  = $info->device( CPU => my %options );
 my $cpuCount = $cpu->count;
 #print "CPU count: $cpuCount\n";
 
-print "\n";
 
 # << usage statement and variable initialisation >>
 my %inputs = (); 
@@ -49,6 +46,8 @@ if ( (!exists $inputs{fasta} & !exists $inputs{bed}) | !exists $inputs{xmap} | !
 	exit 0; 
 }
 else {
+	print "\n\nStart time: "; print join ' ', $dtStart->ymd, $dtStart->hms; print "\n\n";
+	
 	foreach my $key ("xmap","qcmap","rcmap","errbin","output","bed","fasta") {
 		if (exists $inputs{$key} and $inputs{$key} =~ /[a-z]/i) {
 			$inputs{$key} = abs_path($inputs{$key});

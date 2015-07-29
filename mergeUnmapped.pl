@@ -21,7 +21,6 @@ my $mem = (((&totalmem / 1024) / 1024)) / 1024;
 
 # << usage statement and variable initialisation >>
 my %inputs = (); 
-$inputs{'force'}=0;
 GetOptions( \%inputs, 'ref=s', 'oricmap=s', 'fsrcmap=s', 'errbin=s', 'outdir:s', 'xmap=s'); 
 
 if ( (!exists $inputs{ref} & !exists $inputs{oricmap}) | !exists $inputs{fsrcmap} | !exists $inputs{errbin} | !exists $inputs{xmap}) {
@@ -35,7 +34,7 @@ foreach my $key ("ref","oricmap","fsrcmap","errbin","xmap") {
 
 if( ! exists $inputs{outdir} ) { 
 	$inputs{outdir} = cwd(); 
-	$inputs{outdir} = $inputs{outdir}."/fsiterepaired_final";
+	$inputs{outdir} = $inputs{outdir}."/unmapped";
 }
 my $oriprefix = basename(abs_path($inputs{oricmap}), ".cmap");
 
