@@ -4,7 +4,7 @@
 # If .bed file of fragile sites is not provided, an input (reference) fasta is expected, from which potential fragiles sites will be calculated. 
 # Assembly maps are stitched together based on alignments if the maps start and stop overlap a fragile site
 
-# Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --maxlab <max_label_gap_tolerence=0> --maxfill <max basepairs to fill between contigs = 35000> --wobble <fragile site wobble in bp = 0> --force <overwrite output folder>
+# Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --maxlab <max_label_gap_tolerence=0> --maxfill <max basepairs to fill between contigs = 35000> --wobble <fragile site wobble in bp = 0> --seq <sequence bp +/- fragile site to print in final BED> --force <overwrite output folder>
 
 use strict;
 use warnings;
@@ -38,11 +38,11 @@ my $cpuCount = $cpu->count;
 my %inputs = (); 
 my $prefix;
 $inputs{'force'}=0;
-GetOptions( \%inputs, 'fasta:s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'bed:s'); 
+GetOptions( \%inputs, 'fasta:s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'bed:s', 'seq:i'); 
 
 my $hasbed = 0; 
 if ( (!exists $inputs{fasta} & !exists $inputs{bed}) | !exists $inputs{xmap} | !exists $inputs{qcmap} | !exists $inputs{rcmap} | !exists $inputs{errbin} | !exists $inputs{output} ) {
-	print "Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bd>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --maxlab <max_label_gap_tolerence> --maxfill <max basepairs to fill between contigs> --wobble <fragile site wobble in bp> --force <overwrite output folder>\n"; 
+	print "Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bd>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --maxlab <max_label_gap_tolerence> --maxfill <max basepairs to fill between contigs> --wobble <fragile site wobble in bp> --seq <sequence bp +/- fragile site to print in final BED> --force <overwrite output folder>\n"; 
 	exit 0; 
 }
 else {
@@ -57,6 +57,7 @@ else {
 	if( !exists $inputs{maxfill} ) { $inputs{maxfill} = 10000; }
 	if( !exists $inputs{wobble} ) { $inputs{wobble} = 250; }
 	if( !exists $inputs{maxlab} ) { $inputs{maxlab} = 0; }
+	if( !exists $inputs{seq} ) { $inputs{seq} = 500; }
 
 	if( exists $inputs{bed} ) {
 		$hasbed = 1; 
@@ -76,8 +77,10 @@ print "Output folder: $inputs{output}\n";
 print "Maximum labels between maps: $inputs{maxlab}\n";
 print "Maximum basepairs to fill between maps: $inputs{maxfill}\n";
 print "Maximum fragile site wobble: $inputs{wobble}\n";
+print "Sequence bp +/- start/end of fragile to print to BED: $inputs{seq}\n";
 print "\n";
-	
+
+
 # Make sure dependency scripts exist
 my $scriptspath = abs_path(dirname($0));
 if (!-e "$scriptspath/calcFragileSites.pl" | !-e "$scriptspath/split_xmap_standalone.pl" | !-e "$scriptspath/gapFill.pl") {
@@ -120,8 +123,8 @@ if ( $hasbed==1 and -e $inputs{bed}) {
 }
 else {
 	my $stime = DateTime->now;
-	# Usage: perl calcFragilesSites.pl <input FASTA> [output.bed]
-	$cmd = "perl $scriptspath/calcFragileSites.pl $inputs{fasta} $inputs{output}";
+	# Usage: perl calcFragilesSites.pl <input FASTA> [output.bed] [sequence bp +/- fsite to print out]
+	$cmd = "perl $scriptspath/calcFragileSites.pl $inputs{fasta} $inputs{output} $inputs{seq}";
 	print "Running command: $cmd\n";
 	system($cmd);
 	print "\n";
@@ -133,7 +136,6 @@ else {
 	my $etime = DateTime->now;
 	my $dtime = DateTime::Format::Human::Duration->new();
 	print 'Spent time at this step: ', $dtime->format_duration_between($etime, $stime); print "\n\n";
-
 }
 
 # Step 3: Run gapFill.pl for each anchor map
@@ -270,11 +272,11 @@ system($cmd);
 print "\n";
 
 print "Generating merged stitchPositions BED...";
-my $mergedBED = "$inputs{output}/$splitprefix"."_fragileSiteRepaired_stitchPositions.bed";
+my $mergedBED = "$inputs{output}/$splitprefix"."_fragileSiteRepaired_stitchPositions.withSeqs.bed";
 open BEDOUT, ">$mergedBED" or die "ERROR: Could not open $mergedBED: $!\n";
 my @beds = findBEDs("$inputs{output}/contigs");
 my @bedOut;
-print BEDOUT "#CMapId\tStart\tEnd\tType\n";
+print BEDOUT "#CMapId\tStart\tEnd\tType\tSequence\n";
 foreach my $bedFile (@beds) {
 	open BEDFILE, "<$bedFile" or die "ERROR: Could not open $bedFile: $!\n";
 	while (<BEDFILE>) {
@@ -293,9 +295,34 @@ my $stitchCount = scalar(@bedOut);
 print BEDOUT join("\n",@bedOut);
 print "done\n\n";
 
+#generate FASTA of stitchPositions sequences
+$cmd = "perl $scriptspath/extractFASTA_fromBED.pl --bed $mergedBED";
+#print "Running command $cmd\n";
+print "Generating FASTA from merged stitchPositions BED...";
+system($cmd);
+print "..done\n\n";
+
 # Step 5: Calculate stats for merged fragileSiteRepaired CMAP
 print "===Step 5: Calculate stats for merged fragileSiteRepaired CMAP===\n";
 print "\n"; 
+#get stats of original input BED
+my @origBed;
+open ORIGBEDFILE, "<$bed" or die "ERROR: Could not open $bed: $!\n";
+while (<ORIGBEDFILE>) {
+		if ($_ =~ /^#/) {
+			next;
+		}
+		chomp($_);
+		#print BEDOUT "$_\n";
+		push @origBed, $_;
+}
+my ($origBedOut_ref, $origTypeCount_ref) = sortBEDandCount(\@origBed);
+my %origTypeCount = %$origTypeCount_ref;
+my $origCount = scalar(@origBed);
+print "Total potential fragile sites: $origCount\n";
+foreach my $type (sort keys %origTypeCount) {
+	print "\t$type: $origTypeCount{$type}\n";
+}
 print "Total fragile sites repaired (stitched): $stitchCount\n";
 foreach my $type (sort keys %typeCount) {
 	print "\t$type: $typeCount{$type}\n";
@@ -346,7 +373,7 @@ sub sortBEDandCount {
 		chomp($line);
 		#print "$line\n";
 		my @s = split("\t",$line);
-		push (@AoA, [$s[0],$s[1],$s[2],$s[3]]);
+		push (@AoA, [$s[0],$s[1],$s[2],$s[3], $s[4]]);
 		if ($s[3] =~ m/Type/i) {
 			$typeCount{$s[3]}++;
 		}
@@ -361,7 +388,7 @@ sub sortBEDandCount {
 	my @bedOut;
 	for my $aref ( @sortedAoA ) {
 		#print "\t [ @$aref ],\n";
-		my $lineOut = "@$aref[0]\t@$aref[1]\t@$aref[2]\t@$aref[3]";
+		my $lineOut = "@$aref[0]\t@$aref[1]\t@$aref[2]\t@$aref[3]\t@$aref[4]";
 		push @bedOut, $lineOut;		
 	}	
 	

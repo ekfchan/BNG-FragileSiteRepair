@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-#Usage: perl extractContigs.pl <input XMAP> <_q.cmap> <_r.cmap> <first_contig_ID> <second_contig_ID> <fsite type>
+#Usage: perl extractContigs.pl <input XMAP> <_q.cmap> <_r.cmap> <first_contig_ID> <second_contig_ID> <fsite type> <sequence>
 #assumption is that contigs on XMAP is being read from left to right and is sorted by RefStartPos
 #if .fsites file is provided, 
 
@@ -37,6 +37,7 @@ my %firstContigAlignment;
 my %secondContigAlignment;
 
 my $fsiteType = $ARGV[5];
+my $seq = $ARGV[6];
 
 #read input XMAP
 while (my $line = <FILE>) {
@@ -87,7 +88,7 @@ my $padding = ($secondContigStart - $firstContigEnd) + 1;
 #print out stitch locations to BED file
 #print "\tPrinting out stitch locations to $out\n";
 #print "\t$firstContigAlignment{'RefContigID'}\t$firstContigAlignment{'RefEndPos'}\t$secondContigAlignment{'RefStartPos'}\n";
-print OUT "$firstContigAlignment{'RefContigID'}\t".int(($firstContigAlignment{'RefEndPos'}-1))."\t".int(($secondContigAlignment{'RefStartPos'}+1))."\t$fsiteType\n";
+print OUT "$firstContigAlignment{'RefContigID'}\t".int(($firstContigAlignment{'RefEndPos'}-1))."\t".int(($secondContigAlignment{'RefStartPos'}+1))."\t$fsiteType\t$seq\n";
 
 #run script to merge two contigs
 # mod: eva chan, 8 july 2015, assuming path of extractContigs.pl to be same as gapFill.pl (rather than in ../)

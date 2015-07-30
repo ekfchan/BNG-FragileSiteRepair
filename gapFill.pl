@@ -72,6 +72,7 @@ my $mergeCount=0;
 my @firstContigList = ();
 my @secondContigList= ();
 my @fsiteTypeList = ();
+my @seqList = ();
 
 my $idOffset = 100000;
 
@@ -201,6 +202,7 @@ if( exists $inputs{bed} ) {
 						"Start" => "$s[1]", 
 						"End"  => "$s[2]",
 						"Type"  => "$s[3]",
+						"Sequence" => "$s[4]",
 						"line" => $line
 					);
 					push @fsites, \%fsites_line;
@@ -216,52 +218,100 @@ if( exists $inputs{bed} ) {
 	}
 }
 
-## << calculate distance in labels between each adjacent aignments >> 
+## << calculate distance in labels between each adjacent alignments >> 
 # Generate list of contigs to be merged
+
+print "\n";
 
 my $previous = 0;
 
 for (my $i=0; $i < scalar(@xmap); $i++) {
+	my $id1 = $xmap[$i]->{'XmapEntryID'};
 	my $firstRefStartPos = $xmap[$i]->{'RefStartPos'};
 	my $firstRefEndPos = $xmap[$i]->{'RefEndPos'};
 	my $firstQryContigID = $xmap[$i]->{'QryContigID'};
 	my $firstOrientation = $xmap[$i]->{'Orientation'};
-	if ($i+1<scalar(@xmap)) {	
+	if (($i+1)<scalar(@xmap)) {	
+		my $id2 = $xmap[$i+1]->{'XmapEntryID'};
 		my $secondRefStartPos = $xmap[$i+1]->{'RefStartPos'};
 		my $secondRefEndPos = $xmap[$i+1]->{'RefEndPos'};
 		my $secondQryContigID = $xmap[$i+1]->{'QryContigID'}; 
 		my $secondOrientation = $xmap[$i+1]->{'Orientation'};
-		if (($secondRefStartPos >= $firstRefEndPos) && ($secondRefEndPos >= $firstRefEndPos) && ($secondRefStartPos >= $firstRefStartPos) && (($secondRefStartPos - $firstRefEndPos) <= $maxBp)) {
+		print "\nConsidering merge between XmapEntryID: $id1 and XmapEntryID: $id2 Distance: ".abs($secondRefStartPos - $firstRefEndPos)."\n";
+		if (($secondRefStartPos >= $firstRefEndPos) && ($secondRefEndPos >= $firstRefEndPos) && ($secondRefStartPos >= $firstRefStartPos) && (abs($secondRefStartPos - $firstRefEndPos) <= $maxBp)) {
+			print "\tDistance filter: PASS\n";
 			my $firstRefEndPosSite = 0;
 			my $secondRefStartPosSite = 0;
 			foreach my $hash (@r_cmap) {
 				if ($hash->{'Position'} eq $firstRefEndPos) {
-					$firstRefEndPosSite = $hash->{'SiteID'}; }
+					$firstRefEndPosSite = $hash->{'SiteID'}; 
+				}
 				if ($hash->{'Position'} eq $secondRefStartPos) {
-					$secondRefStartPosSite = $hash->{'SiteID'}; }
+					$secondRefStartPosSite = $hash->{'SiteID'}; 
+				}
 			}
 			my $labelsDistance = $secondRefStartPosSite - $firstRefEndPosSite;
-			if ($labelsDistance <= $maxlab) {			
-				
+			print "\tLabels: $labelsDistance\n";
+			if ($labelsDistance <= $maxlab) {
+				print "\tLabel filter: PASS\n";				
 				if ( (grep {$_ eq $firstQryContigID} @firstContigList) || (grep {$_ eq $firstQryContigID} @secondContigList) || (grep {$_ eq $secondQryContigID} @secondContigList) || (grep {$_ eq $secondQryContigID} @firstContigList)) {
+					print "\tOne of the contigs already ID'ed to merge...\n";
 					next; }
 				else {
-									
+					print "\tLooking for fragile sites...\n";				
 					#IF fsites defined, only output contigs that span fragile sites
 					if ($hasfsites!=0) {
+						#previous and next reference label as borders for wobble
+						my $prevLabelId = $firstRefEndPosSite - 1;
+						my $nextLabelId = $secondRefStartPosSite + 1;
+						my $prevLabelPos = 0;
+						my $nextLabelPos = 0;
+						foreach my $hash (@r_cmap) {
+							if ($hash->{'SiteID'} eq $prevLabelId) {
+								$prevLabelPos = $hash->{'Position'}; 
+							}
+							if ($hash->{'SiteID'} eq $nextLabelId) {
+								$nextLabelPos = $hash->{'Position'}; 
+							}
+						}
+						
+						#print "\tPrevLabel Id: $prevLabelId Pos: $prevLabelPos\tNextLabel Id: $nextLabelId Pos: $nextLabelPos\n";
+						my $min; 
+						my $max;
+						if ($maxlab != 0 and $labelsDistance !=0) {
+							$min = $firstRefEndPos;
+							$max = $secondRefStartPos;
+						}
+						else {
+							my $min = $prevLabelPos;
+							my $max = $nextLabelPos;
+						}
+						print "\tLooking for fsites in window Min: $min Max: $max Range: ".abs($max - $min)."\n";
 						#print "Working on $inputs{bed} with ".$fragileSites." fsites\n";
+						
 						foreach my $hash (@fsites) {
 							my $start = $hash->{'Start'};
 							my $end = $hash->{'End'};
 							my $type = $hash->{'Type'};
-							my $distance = $end - $start;
-							my $min = $start - $wobble;
-							my $max = $end + $wobble;
-							if ( ($firstRefEndPos >= $min) && ($firstRefEndPos <= $max) && ($secondRefStartPos <= $max) && ($secondRefStartPos >= $min) ) {
+							my $seq = $hash->{'Sequence'};
+							
+							if ( abs($start - $min) > $wobble) {
+								$min = $start - $wobble;
+							}
+							if ( abs($max - $end) > $wobble) {
+								$max = $end + $wobble;
+							}
+							
+							
+							if ( ($firstRefEndPos >= $min) && ($firstRefEndPos <= $max) && ($secondRefStartPos <= $max) && ($secondRefStartPos >= $min) ) {		
+								print "\tCorrected for wobble fsite window Min: $min Max: $max Range: ".abs($max - $min)."\n";
+								print "\tActual Fsite Start: $start End: $end Range: ".abs($end - $start)."\n";
+								#print "\tLeft wobble: $leftWobble Right wobble: $rightWobble\n";			
 								next if ($firstQryContigID eq $previous);
 								push @firstContigList,$firstQryContigID;
 								push @secondContigList,$secondQryContigID;
 								push @fsiteTypeList, $type;
+								push @seqList, $seq;
 								$previous = $firstQryContigID;
 							}
 						}
@@ -303,7 +353,7 @@ if (scalar(@secondContigList) > 0) {
 		my $extractScript = $scriptspath."/extractContigs.pl";
 		
 		# Perform first merge
-		my @ARGS = ($inputs{x}, $inputs{q}, $inputs{r}, $firstContigList[0], $secondContigList[0],$fsiteTypeList[0]);
+		my @ARGS = ($inputs{x}, $inputs{q}, $inputs{r}, $firstContigList[0], $secondContigList[0],$fsiteTypeList[0], $seqList[0]);
 		my $cwd = cwd();
 		print "Running command: ".$^X." $extractScript ". join(" ",@ARGS)."\n";
 		system($^X, "$extractScript", @ARGS);
@@ -316,7 +366,7 @@ if (scalar(@secondContigList) > 0) {
 		for (my $i=1; $i<(scalar(@secondContigList)); $i++) {
 			next if ( ($secondContigList[$i] eq $secondContigList[0]) ) ;
 			#for (my $i=1; $i<(3); $i++) {
-			@ARGS = ($inputs{x}, $outName, $inputs{r}, $firstContigList[$i], $secondContigList[$i], $fsiteTypeList[$i]);
+			@ARGS = ($inputs{x}, $outName, $inputs{r}, $firstContigList[$i], $secondContigList[$i], $fsiteTypeList[$i], $seqList[$i]);
 			print "Running command: ".$^X." $extractScript ". join(" ",@ARGS)."\n";
 			system($^X, "$extractScript", @ARGS);
 			print "QryContigID $firstContigList[$i] merged with QryContigID $secondContigList[$i] into QueryContigID ".($firstContigList[$i]+$idOffset)."\n";
