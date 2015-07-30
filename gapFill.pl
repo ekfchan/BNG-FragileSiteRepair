@@ -276,17 +276,17 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 						}
 						
 						#print "\tPrevLabel Id: $prevLabelId Pos: $prevLabelPos\tNextLabel Id: $nextLabelId Pos: $nextLabelPos\n";
-						my $min=0; 
-						my $max=0;
+						my $globalMin=0; 
+						my $globalMax=0;
 						if ($maxlab != 0 and $labelsDistance !=0) {
-							$min = $firstRefEndPos;
-							$max = $secondRefStartPos;
+							$globalMin = $firstRefEndPos;
+							$globalMax = $secondRefStartPos;
 						}
 						else {
-							$min = $prevLabelPos;
-							$max = $nextLabelPos;
+							$globalMin = $firstRefEndPos-1000;
+							$globalMax = $secondRefStartPos+1000;
 						}
-						print "\tLooking for fsites in window Min: $min Max: $max Range: ".abs($max - $min)."\n";
+						print "\tLooking for fsites in window Min: $globalMin Max: $globalMax Range: ".abs($globalMax - $globalMin)."\n";
 						#print "Working on $inputs{bed} with ".$fragileSites." fsites\n";
 						
 						foreach my $hash (@fsites) {
@@ -294,18 +294,28 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 							my $end = $hash->{'End'};
 							my $type = $hash->{'Type'};
 							my $seq = $hash->{'Sequence'};
-							
-							if ( abs($start - $min) > $wobble) {
-								$min = $start - $wobble;
+							my $min=0;
+							my $max=0;
+							if ( abs($start - $globalMin) > $wobble) {
+								#print "\tDifference: ".abs($start - $globalMin)." Changing min from $globalMin to ".($start - $wobble)."\n";
+								$min = $start - $wobble;	 
 							}
-							if ( abs($max - $end) > $wobble) {
+							else {
+								$min = $globalMin; 
+							}
+							if ( abs($globalMax - $end) > $wobble) {
+								#print "\tDifference: ".abs($globalMax - $end)." Changing max from $globalMax to ".($end + $wobble)."\n";
 								$max = $end + $wobble;
+							}
+							else {
+								$max = $globalMax;
 							}
 							
 							
 							if ( ($firstRefEndPos >= $min) && ($firstRefEndPos <= $max) && ($secondRefStartPos <= $max) && ($secondRefStartPos >= $min) ) {		
-								print "\tCorrected for wobble fsite window Min: $min Max: $max Range: ".abs($max - $min)."\n";
 								print "\tActual Fsite Start: $start End: $end Range: ".abs($end - $start)."\n";
+								print "\tFragile site located within Window corrected for max wobble fsite window Min: $min Max: $max Range: ".abs($max - $min)."\n";
+								
 								#print "\tLeft wobble: $leftWobble Right wobble: $rightWobble\n";			
 								next if ($firstQryContigID eq $previous);
 								push @firstContigList,$firstQryContigID;
@@ -322,7 +332,13 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 						push @secondContigList,$secondQryContigID;
 					}
 				}				
-			}			
+			}
+			else {
+				print "\tLabel filter: FAIL\n";
+			}
+		}
+		else {
+			print "\tDistance filter: FAIL\n";
 		}
 	}
 	else {
