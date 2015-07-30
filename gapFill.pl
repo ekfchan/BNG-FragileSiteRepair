@@ -238,7 +238,9 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 		my $secondQryContigID = $xmap[$i+1]->{'QryContigID'}; 
 		my $secondOrientation = $xmap[$i+1]->{'Orientation'};
 		print "\nConsidering merge between XmapEntryID: $id1 and XmapEntryID: $id2 Distance: ".abs($secondRefStartPos - $firstRefEndPos)."\n";
-		if (($secondRefStartPos >= $firstRefEndPos) && ($secondRefEndPos >= $firstRefEndPos) && ($secondRefStartPos >= $firstRefStartPos) && (abs($secondRefStartPos - $firstRefEndPos) <= $maxBp)) {
+		if (($secondRefStartPos >= $firstRefEndPos) && ($secondRefEndPos >= $firstRefEndPos) && ($secondRefStartPos >= $firstRefStartPos)) {
+		print "\tOverlap filter: PASS\n";
+		if (abs($secondRefStartPos - $firstRefEndPos) <= $maxBp) {
 			print "\tDistance filter: PASS\n";
 			my $firstRefEndPosSite = 0;
 			my $secondRefStartPosSite = 0;
@@ -250,7 +252,7 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 					$secondRefStartPosSite = $hash->{'SiteID'}; 
 				}
 			}
-			my $labelsDistance = $secondRefStartPosSite - $firstRefEndPosSite;
+			my $labelsDistance = $secondRefStartPosSite - $firstRefEndPosSite - 1;
 			print "\tLabels: $labelsDistance\n";
 			if ($labelsDistance <= $maxlab) {
 				print "\tLabel filter: PASS\n";				
@@ -278,7 +280,7 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 						#print "\tPrevLabel Id: $prevLabelId Pos: $prevLabelPos\tNextLabel Id: $nextLabelId Pos: $nextLabelPos\n";
 						my $globalMin=0; 
 						my $globalMax=0;
-						if ($maxlab != 0 and $labelsDistance !=0) {
+						if ($labelsDistance != -1) {
 							$globalMin = $firstRefEndPos;
 							$globalMax = $secondRefStartPos;
 						}
@@ -286,7 +288,7 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 							$globalMin = $firstRefEndPos-1000;
 							$globalMax = $secondRefStartPos+1000;
 						}
-						print "\tLooking for fsites in window Min: $globalMin Max: $globalMax Range: ".abs($globalMax - $globalMin)."\n";
+						print "\tLooking for fsites in global window Min: $globalMin Max: $globalMax Range: ".abs($globalMax - $globalMin)."\n";
 						#print "Working on $inputs{bed} with ".$fragileSites." fsites\n";
 						
 						foreach my $hash (@fsites) {
@@ -339,6 +341,10 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 		}
 		else {
 			print "\tDistance filter: FAIL\n";
+		}
+		}
+		else {
+			print "\tOverlap filter: FAIL\n";
 		}
 	}
 	else {

@@ -24,6 +24,8 @@ use DateTime::Format::Human::Duration;
 
 my $dtStart = DateTime->now;
 
+print qx/ps -o args $$/;
+
 #get number of CPU cores
 use Sys::Info;
 use Sys::Info::Constants qw( :device_cpu );
