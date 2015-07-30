@@ -24,7 +24,13 @@ use DateTime::Format::Human::Duration;
 
 my $dtStart = DateTime->now;
 
+print "\n";
 print qx/ps -o args $$/;
+print "\n";
+
+my $hostname = `hostname`;
+chomp($hostname);
+print "Running on host: $hostname\n";
 
 #get number of CPU cores
 use Sys::Info;
@@ -34,7 +40,13 @@ my $cpu  = $info->device( CPU => my %options );
 #printf "There are %d CPUs\n"  , $cpu->count || 1;
 my $cpuCount = $cpu->count;
 #print "CPU count: $cpuCount\n";
+# get memory info
+use Sys::MemInfo qw(totalmem freemem totalswap);
+my $mem = (((&totalmem / 1024) / 1024)) / 1024; 
 
+print "Maximum CPU cores to use: $cpuCount\n";
+print "Maximum memory to use: $mem GB\n";
+print "\n";
 
 # << usage statement and variable initialisation >>
 my %inputs = (); 
@@ -48,7 +60,7 @@ if ( (!exists $inputs{fasta} & !exists $inputs{bed}) | !exists $inputs{xmap} | !
 	exit 0; 
 }
 else {
-	print "\n\nStart time: "; print join ' ', $dtStart->ymd, $dtStart->hms; print "\n\n";
+	print "\nStart time: "; print join ' ', $dtStart->ymd, $dtStart->hms; print "\n\n";
 	
 	foreach my $key ("xmap","qcmap","rcmap","errbin","output","bed","fasta") {
 		if (exists $inputs{$key} and $inputs{$key} =~ /[a-z]/i) {
@@ -59,7 +71,7 @@ else {
 	if( !exists $inputs{maxfill} ) { $inputs{maxfill} = 10000; }
 	if( !exists $inputs{wobble} ) { $inputs{wobble} = 250; }
 	if( !exists $inputs{maxlab} ) { $inputs{maxlab} = 0; }
-	if( !exists $inputs{seq} ) { $inputs{seq} = 500; }
+	if( !exists $inputs{seq} ) { $inputs{seq} = 50; }
 
 	if( exists $inputs{bed} ) {
 		$hasbed = 1; 
@@ -278,7 +290,8 @@ my $mergedBED = "$inputs{output}/$splitprefix"."_fragileSiteRepaired_stitchPosit
 open BEDOUT, ">$mergedBED" or die "ERROR: Could not open $mergedBED: $!\n";
 my @beds = findBEDs("$inputs{output}/contigs");
 my @bedOut;
-print BEDOUT "#CMapId\tStart\tEnd\tType\tSequence\n";
+#print BEDOUT "#CMapId\tStart\tEnd\tType\tSequence\n";
+print BEDOUT "#CMapId	Start	End	Type	Score	Strand	ThickStart	ThickEnd	ItemRgba	Sequence\n";
 foreach my $bedFile (@beds) {
 	open BEDFILE, "<$bedFile" or die "ERROR: Could not open $bedFile: $!\n";
 	while (<BEDFILE>) {
@@ -300,9 +313,9 @@ print "done\n\n";
 #generate FASTA of stitchPositions sequences
 $cmd = "perl $scriptspath/extractFASTA_fromBED.pl --bed $mergedBED";
 #print "Running command $cmd\n";
-print "Generating FASTA from merged stitchPositions BED...";
+print "Generating FASTA from merged stitchPositions BED...\n";
 system($cmd);
-print "..done\n\n";
+print "\n";
 
 # Step 5: Calculate stats for merged fragileSiteRepaired CMAP
 print "===Step 5: Calculate stats for merged fragileSiteRepaired CMAP===\n";
@@ -375,7 +388,8 @@ sub sortBEDandCount {
 		chomp($line);
 		#print "$line\n";
 		my @s = split("\t",$line);
-		push (@AoA, [$s[0],$s[1],$s[2],$s[3], $s[4]]);
+		#CMapId	Start	End	Type	Score	Strand	ThickStart	ThickEnd	ItemRgba	Sequence
+		push (@AoA, [$s[0],$s[1],$s[2],$s[3], $s[4],$s[5],$s[6],$s[7],$s[8],$s[9]]);
 		if ($s[3] =~ m/Type/i) {
 			$typeCount{$s[3]}++;
 		}
@@ -390,7 +404,7 @@ sub sortBEDandCount {
 	my @bedOut;
 	for my $aref ( @sortedAoA ) {
 		#print "\t [ @$aref ],\n";
-		my $lineOut = "@$aref[0]\t@$aref[1]\t@$aref[2]\t@$aref[3]\t@$aref[4]";
+		my $lineOut = "@$aref[0]\t@$aref[1]\t@$aref[2]\t@$aref[3]\t@$aref[4]\t@$aref[5]\t@$aref[6]\t@$aref[7]\t@$aref[8]\t@$aref[9]";
 		push @bedOut, $lineOut;		
 	}	
 	

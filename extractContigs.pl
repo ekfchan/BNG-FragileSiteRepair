@@ -12,6 +12,10 @@ use IPC::System::Simple qw(system capture);
 use Cwd;
 use File::Basename; 	#mod: eva chan, 8 july 2015, to allow trace path of scripts
 
+print "\n";
+print qx/ps -o args $$/;
+print "\n";
+
 my $scriptspath = Cwd::abs_path(dirname($0));	#mod: eva chan, 8 july 2015
 
 open FILE, "$ARGV[0]" or die $!;
@@ -28,7 +32,8 @@ $out =~ s/_temp//i;
 $out = $out."_fragileSiteRepaired_stitchPositions.bed";
 if (!-e $out) {
 	open OUT, ">$out" or die "ERROR: Cannot open $out for writing! $!\n";
-	print OUT "#CMapId\tStart\tEnd\tType\n"; }
+	#print OUT "#CMapId\tStart\tEnd\tType\n";
+	print OUT "#CMapId	Start	End	Type	Score	Strand	ThickStart	ThickEnd	ItemRgba	Sequence\n"; }
 else {
 	open OUT, ">>$out" or die "ERROR: Cannot open $out for writing! $!\n";
 }
@@ -37,7 +42,12 @@ my %firstContigAlignment;
 my %secondContigAlignment;
 
 my $fsiteType = $ARGV[5];
-my $seq = $ARGV[6];
+my $score = $ARGV[6];
+my $strand = $ARGV[7];
+my $thickStart = $ARGV[8];
+my $thickEnd = $ARGV[9];
+my $itemRgba = $ARGV[10];
+my $seq = $ARGV[11];
 
 #read input XMAP
 while (my $line = <FILE>) {
@@ -88,7 +98,8 @@ my $padding = ($secondContigStart - $firstContigEnd) + 1;
 #print out stitch locations to BED file
 #print "\tPrinting out stitch locations to $out\n";
 #print "\t$firstContigAlignment{'RefContigID'}\t$firstContigAlignment{'RefEndPos'}\t$secondContigAlignment{'RefStartPos'}\n";
-print OUT "$firstContigAlignment{'RefContigID'}\t".int(($firstContigAlignment{'RefEndPos'}-1))."\t".int(($secondContigAlignment{'RefStartPos'}+1))."\t$fsiteType\t$seq\n";
+#CMapId	Start	End	Type	Score	Strand	ThickStart	ThickEnd	ItemRgba	Sequence
+print OUT "$firstContigAlignment{'RefContigID'}\t".int(($firstContigAlignment{'RefEndPos'}-1))."\t".int(($secondContigAlignment{'RefStartPos'}+1))."\t$fsiteType\t$score\t$strand\t$thickStart\t$thickEnd\t$itemRgba\t$seq\n";
 
 #run script to merge two contigs
 # mod: eva chan, 8 july 2015, assuming path of extractContigs.pl to be same as gapFill.pl (rather than in ../)

@@ -66,8 +66,8 @@ if( -e $outputfile ) {
 }
 
 #check input sequence buffer variable
-my $buffer=500;	
-if (defined $ARGV[2] && int($ARGV[2]>0)) {
+my $buffer=50;	
+if (defined $ARGV[2] && int($ARGV[2])>0) {
 		$buffer = int($ARGV[2]);
 }
 
@@ -86,7 +86,7 @@ my $seqin = Bio::SeqIO->new( -file => "$fasta");
 my $count=1;
 my @fsitesBed;
 #my $fsitesHeaderBed = "#Nickase 1: $enzyme1\n#Nickase 2: $enzyme2\n#CMapId\tStart\tEnd\tType\tSequence";
-my $fsitesHeaderBed = "#Nickase 1: $enzyme1\n#CMapId\tStart\tEnd\tType\tSequence";
+my $fsitesHeaderBed = "#Nickase 1: $enzyme1\n#CMapId\tStart\tEnd\tType\tScore\tStrand\tThickStart\tThickEnd\tItemRgba\tSequence";
 while((my $seqobj = $seqin->next_seq())) {   #for each sequence in FASTA (e.g. each contig)
 	my $seq = $seqobj->seq();
 	my $id  = $seqobj->display_id();
@@ -123,7 +123,21 @@ while((my $seqobj = $seqin->next_seq())) {   #for each sequence in FASTA (e.g. e
 			$end = $length-1;
 		}
 		my $seq = $seqobj->subseq($start,$end);
-		my $lineOut = "$s[0]\t$s[1]\t$s[2]\t$s[3]\t$seq";
+		
+		#set fsite type RGBA codes
+		my $itemRgb;
+		if ($s[3] =~ m/TypeI/i) {
+			$itemRgb = "255,0,0,255"; }
+		elsif ($s[3] =~ m/TypeII/i) {
+			$itemRgb = "255,255,0,255"; }
+		elsif ($s[3] =~ m/TypeIII/i) {
+			$itemRgb = "255,0,255,255"; }
+		elsif ($s[3] =~ m/TypeIV/i) {
+			$itemRgb = "0,255,255,255"; }
+		
+		#build and push BED line
+		#CMapId\tStart\tEnd\tType\tScore\tStrand\thickStart\thickEnd\titemRgb\tSequence";
+		my $lineOut = "$s[0]\t$s[1]\t$s[2]\t$s[3]\t0\t0\t$s[1]\t$s[2]\t$itemRgb\t$seq";
 		push @fsiteBedSeq, $lineOut;
 	}
 	

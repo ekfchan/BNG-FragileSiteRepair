@@ -24,6 +24,10 @@ use Sys::Info;
 use Sys::Info::Constants qw( :device_cpu );
 use Sys::MemInfo qw(totalmem freemem totalswap);
 
+print "\n";
+print qx/ps -o args $$/;
+print "\n";
+
 ## << usage statement and variable initialisation >>
 my %inputs = (); 
 GetOptions( \%inputs, 'x|xmap=s', 'q|qcmap=s', 'r|rcmap=s', 'e|errbin=s', 'o|output|prefix=s', 'bed|b:s', 'round:i', 'maxlab:i', 'maxfill:i', 'wobble:i'); 
@@ -58,7 +62,7 @@ $outName2 =~ s/_q.cmap/_temp/g;
 my $outName3 = $inputs{o};
 
 my @xmap;
-#my @q_cmap;
+my @q_cmap;
 my @r_cmap;
 
 my $alignments=0;
@@ -71,7 +75,13 @@ my $r_sites=0;
 my $mergeCount=0;
 my @firstContigList = ();
 my @secondContigList= ();
+#CMapId	Start	End	Type	Score	Strand	ThickStart	ThickEnd	ItemRgba	Sequence
 my @fsiteTypeList = ();
+my @scoreList = ();
+my @strandList = ();
+my @thickStartList = ();
+my @thickEndList = ();
+my @itemRgbaList = ();
 my @seqList = ();
 
 my $idOffset = 100000;
@@ -126,11 +136,24 @@ while (my $line = <QCMAP>) {
 	else {
 		$q_sites++;
 		my @s = split(/\t/,$line);
-		#load first contig into hash
+		for (my $i=0; $i<scalar(@s); $i++) {
+			$s[$i] =~ s/^\s+|\s+$//g; }
 		##h CMapId	ContigLength	NumSites	SiteID	LabelChannel	Position	StdDev	Coverage	Occurrence	GmeanSNR	lnSNRsd	SNR
 		#  2020	 718132.6	74	1	1	20.0	81.9	14.0	14.0	12.4650	0.4814	0
 		push @q_mapIds, $s[0];
-		}
+		my %cmap_line = (
+			"CMapId"  => "$s[0]",
+			"ContigLength" => "$s[1]",
+			"NumSites"  => "$s[2]",
+			"SiteID"  => "$s[3]",
+			"LabelChannel"  => "$s[4]",
+			"Position"  => "$s[5]",
+			"StdDev" => "$s[6]",
+			"Coverage" => "$s[7]",
+			"Occurrence" => "$s[8]"
+			);
+		push @q_cmap, \%cmap_line;	
+	}
 }
 print "Read in $q_sites sites from $inputs{q}\n";
 @q_mapIds = unique(@q_mapIds);
@@ -196,13 +219,18 @@ if( exists $inputs{bed} ) {
 				my @s = split(/\t/,$line);
 				if ($s[0] eq $r_mapIds[0]) {
 					$fragileSites++;
-					#CMapId	Start	End	Type
+					#CMapId	Start	End	Type	Score	Strand	ThickStart	ThickEnd	ItemRgba	Sequence
 					my %fsites_line = (
 						"CMapId"  => "$s[0]",
 						"Start" => "$s[1]", 
 						"End"  => "$s[2]",
 						"Type"  => "$s[3]",
-						"Sequence" => "$s[4]",
+						"Score" => "$s[4]",
+						"Strand" => "$s[5]",
+						"ThickStart" => "$s[6]",
+						"ThickEnd" => "$s[7]",
+						"ItemRgba" => "$s[8]",
+						"Sequence" => "$s[9]",
 						"line" => $line
 					);
 					push @fsites, \%fsites_line;
@@ -231,17 +259,50 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 	my $firstRefEndPos = $xmap[$i]->{'RefEndPos'};
 	my $firstQryContigID = $xmap[$i]->{'QryContigID'};
 	my $firstOrientation = $xmap[$i]->{'Orientation'};
+	my $firstQryStartPos = $xmap[$i]->{'QryStartPos'};
+	my $firstQryEndPos = $xmap[$i]->{'QryEndPos'};
 	if (($i+1)<scalar(@xmap)) {	
 		my $id2 = $xmap[$i+1]->{'XmapEntryID'};
 		my $secondRefStartPos = $xmap[$i+1]->{'RefStartPos'};
 		my $secondRefEndPos = $xmap[$i+1]->{'RefEndPos'};
 		my $secondQryContigID = $xmap[$i+1]->{'QryContigID'}; 
 		my $secondOrientation = $xmap[$i+1]->{'Orientation'};
+		my $secondQryStartPos = $xmap[$i+1]->{'QryStartPos'};
+		my $secondQryEndPos = $xmap[$i+1]->{'QryEndPos'};
 		print "\nConsidering merge between XmapEntryID: $id1 and XmapEntryID: $id2 Distance: ".abs($secondRefStartPos - $firstRefEndPos)."\n";
 		if (($secondRefStartPos >= $firstRefEndPos) && ($secondRefEndPos >= $firstRefEndPos) && ($secondRefStartPos >= $firstRefStartPos)) {
 		print "\tOverlap filter: PASS\n";
 		if (abs($secondRefStartPos - $firstRefEndPos) <= $maxBp) {
 			print "\tDistance filter: PASS\n";
+			
+			#check to make sure that the alignment extends to start/end of contig
+			my $firstQryStartPosSite;
+			my $firstQryEndPosSite;
+			my $secondQryStartPosSite;
+			my $secondQryEndPosSite;
+			my $firstNumSites;
+			my $secondNumSites;
+			foreach my $hash (@q_cmap) {
+				#print Dumper($hash);
+				if (($hash->{'CMapId'} eq $firstQryContigID) && ($hash->{'Position'} eq $firstQryStartPos)) {
+					$firstQryStartPosSite = $hash->{'SiteID'}; 
+					$firstNumSites = $hash->{'NumSites'};
+				}
+				elsif (($hash->{'CMapId'} eq $firstQryContigID) && ($hash->{'Position'} eq $firstQryEndPos)) {
+					$firstQryEndPosSite = $hash->{'SiteID'}; 
+					$firstNumSites = $hash->{'NumSites'};
+				}
+				elsif (($hash->{'CMapId'} eq $secondQryContigID) && ($hash->{'Position'} eq $secondQryStartPos)) {
+					$secondQryStartPosSite = $hash->{'SiteID'}; 
+					$secondNumSites = $hash->{'NumSites'};
+				}
+				elsif (($hash->{'CMapId'} eq $secondQryContigID) && ($hash->{'Position'} eq $secondQryEndPos)) {
+					$secondQryEndPosSite = $hash->{'SiteID'}; 
+					$secondNumSites = $hash->{'NumSites'};
+				}
+			}
+			if ( (($firstOrientation eq "+" && $secondOrientation eq "+") && ($firstQryEndPosSite eq $firstNumSites) && ($secondQryStartPosSite eq 1)) || (($firstOrientation eq "+" && $secondOrientation eq "-") && ($firstQryEndPosSite eq $firstNumSites) && ($secondQryStartPosSite eq $secondNumSites)) || (($firstOrientation eq "-" && $secondOrientation eq "+") && ($firstQryEndPosSite eq 1) && ($secondQryStartPosSite eq 1)) || (($firstOrientation eq "-" && $secondOrientation eq "-") && ($firstQryEndPosSite eq 1) && ($secondQryStartPosSite eq $secondNumSites)) ) {
+			print "\tAlignment filter: PASS\n";
 			my $firstRefEndPosSite = 0;
 			my $secondRefStartPosSite = 0;
 			foreach my $hash (@r_cmap) {
@@ -291,10 +352,17 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 						print "\tLooking for fsites in global window Min: $globalMin Max: $globalMax Range: ".abs($globalMax - $globalMin)."\n";
 						#print "Working on $inputs{bed} with ".$fragileSites." fsites\n";
 						
+						my $fsiteFound = 0;
 						foreach my $hash (@fsites) {
+							#CMapId	Start	End	Type	Score	Strand	ThickStart	ThickEnd	ItemRgba	Sequence
 							my $start = $hash->{'Start'};
 							my $end = $hash->{'End'};
 							my $type = $hash->{'Type'};
+							my $score = $hash->{'Score'};
+							my $strand = $hash->{'Strand'};
+							my $thickStart = $hash->{'ThickStart'};
+							my $thickEnd = $hash->{'ThickEnd'};
+							my $itemRgba = $hash->{'ItemRgba'};
 							my $seq = $hash->{'Sequence'};
 							my $min=0;
 							my $max=0;
@@ -322,11 +390,19 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 								next if ($firstQryContigID eq $previous);
 								push @firstContigList,$firstQryContigID;
 								push @secondContigList,$secondQryContigID;
+								#CMapId	Start	End	Type	Score	Strand	ThickStart	ThickEnd	ItemRgba	Sequence
 								push @fsiteTypeList, $type;
+								push @scoreList, $score;
+								push @strandList, $strand;
+								push @thickStartList, $thickStart;
+								push @thickEndList, $thickEnd;
+								push @itemRgbaList, $itemRgba;
 								push @seqList, $seq;
 								$previous = $firstQryContigID;
+								$fsiteFound = 1;
 							}
 						}
+						if ($fsiteFound eq 0) { print "\tNo fragile site found in Window\n"; }
 					}
 					else {
 						#print $inputs{bed}, " undefined'."\n";
@@ -337,6 +413,16 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 			}
 			else {
 				print "\tLabel filter: FAIL\n";
+			}
+			}
+			else {
+				print "\tAlignment filter: FAIL\n";
+				#if ( (($firstOrientation eq "+" && $secondOrientation eq "+") && ($firstQryEndPosSite eq $firstNumSites) && ($secondQryStartPosSite eq 1)) || (($firstOrientation eq "+" && $secondOrientation eq "-") && ($firstQryEndPosSite eq $firstNumSites) && ($secondQryStartPosSite eq $secondNumSites)) || (($firstOrientation eq "-" && $secondOrientation eq "+") && ($firstQryEndPosSite eq 1) && ($secondQryStartPosSite eq 1)) || (($firstOrientation eq "-" && $secondOrientation eq "-") && ($firstQryEndPosSite eq 1) && ($secondQryStartPosSite eq $secondNumSites)) ) {
+				print "\tFirst contig: $id1 Orientation: $firstOrientation Start: $firstQryStartPos $firstQryStartPosSite End: $firstQryEndPos $firstQryEndPosSite NumSites: $firstNumSites\n";
+				print "\tSecond contig: $id2 Orientation: $secondOrientation Start: $secondQryStartPos $secondQryStartPosSite End: $secondQryEndPos $secondQryEndPosSite NumSites: $secondNumSites\n";
+			
+			
+			
 			}
 		}
 		else {
@@ -375,7 +461,8 @@ if (scalar(@secondContigList) > 0) {
 		my $extractScript = $scriptspath."/extractContigs.pl";
 		
 		# Perform first merge
-		my @ARGS = ($inputs{x}, $inputs{q}, $inputs{r}, $firstContigList[0], $secondContigList[0],$fsiteTypeList[0], $seqList[0]);
+		#CMapId	Start	End	Type	Score	Strand	ThickStart	ThickEnd	ItemRgba	Sequence
+		my @ARGS = ($inputs{x}, $inputs{q}, $inputs{r}, $firstContigList[0], $secondContigList[0],$fsiteTypeList[0],$scoreList[0],$strandList[0],$thickStartList[0],$thickEndList[0],$itemRgbaList[0],$seqList[0]);
 		my $cwd = cwd();
 		print "Running command: ".$^X." $extractScript ". join(" ",@ARGS)."\n";
 		system($^X, "$extractScript", @ARGS);
@@ -388,7 +475,7 @@ if (scalar(@secondContigList) > 0) {
 		for (my $i=1; $i<(scalar(@secondContigList)); $i++) {
 			next if ( ($secondContigList[$i] eq $secondContigList[0]) ) ;
 			#for (my $i=1; $i<(3); $i++) {
-			@ARGS = ($inputs{x}, $outName, $inputs{r}, $firstContigList[$i], $secondContigList[$i], $fsiteTypeList[$i], $seqList[$i]);
+			@ARGS = ($inputs{x}, $outName, $inputs{r}, $firstContigList[$i], $secondContigList[$i], $fsiteTypeList[$i],$scoreList[$i],$strandList[$i],$thickStartList[$i],$thickEndList[$i],$itemRgbaList[$i],$seqList[$i]);
 			print "Running command: ".$^X." $extractScript ". join(" ",@ARGS)."\n";
 			system($^X, "$extractScript", @ARGS);
 			print "QryContigID $firstContigList[$i] merged with QryContigID $secondContigList[$i] into QueryContigID ".($firstContigList[$i]+$idOffset)."\n";
