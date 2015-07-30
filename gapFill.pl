@@ -276,15 +276,15 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 						}
 						
 						#print "\tPrevLabel Id: $prevLabelId Pos: $prevLabelPos\tNextLabel Id: $nextLabelId Pos: $nextLabelPos\n";
-						my $min; 
-						my $max;
+						my $min=0; 
+						my $max=0;
 						if ($maxlab != 0 and $labelsDistance !=0) {
 							$min = $firstRefEndPos;
 							$max = $secondRefStartPos;
 						}
 						else {
-							my $min = $prevLabelPos;
-							my $max = $nextLabelPos;
+							$min = $prevLabelPos;
+							$max = $nextLabelPos;
 						}
 						print "\tLooking for fsites in window Min: $min Max: $max Range: ".abs($max - $min)."\n";
 						#print "Working on $inputs{bed} with ".$fragileSites." fsites\n";
