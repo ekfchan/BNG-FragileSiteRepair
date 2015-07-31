@@ -39,8 +39,7 @@ if( !exists $inputs{x} | !exists $inputs{q} | !exists $inputs{r} | !exists $inpu
 
 my $scriptspath = Cwd::abs_path(dirname($0));	#gapFill.pl relies on two additional scripts (extractContigs.pl and mergeContigs.pl) and assumes thay are available from the same directory as gapFill.pl
 
-#my $round = 1; 
-#if( !exists $inputs{round} or $inputs{round}<1 or $inputs{round}>2 ) { $inputs{round}=1; }
+## Default values
 if( !exists $inputs{round} ) { $inputs{round} = 1; }
 my $maxBp = 10000; 
 if( exists $inputs{maxfill} ) { $maxBp = $inputs{maxfill}; }
@@ -65,12 +64,12 @@ my @xmap;
 my @q_cmap;
 my @r_cmap;
 
-my $alignments=0;
+my $alignments=0;	#number of alignments
 my @q_mapIds;
-my @r_mapIds;
+my @r_mapIds;	#RefContigID should always be the same 
 
-my $q_sites=0;
-my $r_sites=0;
+my $q_sites=0;	#total number of sites across all query maps in _q.cmap
+my $r_sites=0;	#total sites on single contig of _r.cmap
 
 my $mergeCount=0;
 my @firstContigList = ();
@@ -113,7 +112,7 @@ while (my $line = <XMAP>) {
 		my %xmap_line = (
 				"XmapEntryID"  => "$s[0]", 
 				"QryContigID" => "$s[1]", 
-				"RefContigID"  => "$s[2]",
+				"RefContigID"  => "$s[2]",	#should be identical (one of the assumptions)
 				"QryStartPos"  => "$s[3]", 
 				"QryEndPos"  => "$s[4]", 
 				"RefStartPos"  => "$s[5]", 
@@ -127,7 +126,7 @@ while (my $line = <XMAP>) {
 print "Read in $alignments alignments from $inputs{x}\n";
 print "\n";
 
-## < read input query CMAP >> 
+## << read input query CMAP >> 
 while (my $line = <QCMAP>) {
 	chomp($line);
 	#if header then skip
@@ -174,7 +173,7 @@ while (my $line = <RCMAP>) {
 		#  2020	 718132.6	74	1	1	20.0	81.9	14.0	14.0	
 		push @r_mapIds, $s[0];
 		my %cmap_line = (
-			"CMapId"  => "$s[0]",
+			"CMapId"  => "$s[0]",	#should be identical (only single contig in _r.cmap)
 			"ContigLength" => "$s[1]",
 			"NumSites"  => "$s[2]",
 			"SiteID"  => "$s[3]",

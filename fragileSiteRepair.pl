@@ -4,7 +4,7 @@
 # If .bed file of fragile sites is not provided, an input (reference) fasta is expected, from which potential fragiles sites will be calculated. 
 # Assembly maps are stitched together based on alignments if the maps start and stop overlap a fragile site
 
-# Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> [--ref <reference.cmap>] --output <output folder> --maxlab <max_label_gap_tolerence=0> --maxfill <max basepairs to fill between contigs = 35000> --wobble <fragile site wobble in bp = 0> --seq <sequence bp +/- fragile site to print in final BED> --force <overwrite output folder>
+# UUsage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> [--ref <reference.cmap>] --output <output folder> [--maxlab <max_label_gap_tolerence = 0>] [--maxfill <max basepairs to fill between contigs = 10000>] [--wobble <fragile site wobble in bp = 250>] [--seq <sequence bp +/- fragile site to print in final BED>] [--force <overwrite output folder>]
 
 use strict;
 use warnings;
@@ -23,6 +23,9 @@ use DateTime::Format::Human::Duration;
 #use Data::Dumper;
 
 my $dtStart = DateTime->now;
+my $stime = DateTime->now;
+my $etime = DateTime->now;
+my $dtime = DateTime::Format::Human::Duration->new();
 
 print "\n";
 print qx/ps -o args $$/;
@@ -45,18 +48,17 @@ use Sys::MemInfo qw(totalmem freemem totalswap);
 my $mem = (((&totalmem / 1024) / 1024)) / 1024; 
 
 print "Maximum CPU cores to use: $cpuCount\n";
-print "Maximum memory to use: $mem GB\n";
+print "Maximum memory to use: ", int($mem)," GB\n";
 print "\n";
 
 # << usage statement and variable initialisation >>
 my %inputs = (); 
-my $prefix;
 $inputs{'force'}=0;
 GetOptions( \%inputs, 'fasta:s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'bed:s', 'seq:i', 'cmap:s', 'ref:s'); 
 
 my $hasbed = 0; 
 if ( (!exists $inputs{fasta} & !exists $inputs{bed}) | !exists $inputs{xmap} | !exists $inputs{qcmap} | !exists $inputs{rcmap} | !exists $inputs{errbin} | !exists $inputs{output} ) {
-	print "Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> [--ref <reference.cmap>] --output <output folder> --maxlab <max_label_gap_tolerence=0> --maxfill <max basepairs to fill between contigs = 35000> --wobble <fragile site wobble in bp = 0> --seq <sequence bp +/- fragile site to print in final BED> --force <overwrite output folder>\n"; 
+	print "Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> [--ref <reference.cmap>] --output <output folder> [--maxlab <max_label_gap_tolerence = 0>] [--maxfill <max basepairs to fill between contigs = 10000>] [--wobble <fragile site wobble in bp = 250>] [--seq <sequence bp +/- fragile site to print in final BED>] [--force <overwrite output folder>]\n"; 
 	exit 0; 
 }
 else {
@@ -67,7 +69,6 @@ else {
 			$inputs{$key} = abs_path($inputs{$key});
 		}
 	}
-	$prefix = basename(abs_path($inputs{xmap}), ".xmap");
 	if( !exists $inputs{maxfill} ) { $inputs{maxfill} = 10000; }
 	if( !exists $inputs{wobble} ) { $inputs{wobble} = 250; }
 	if( !exists $inputs{maxlab} ) { $inputs{maxlab} = 0; }
@@ -80,6 +81,7 @@ else {
 		}
 	} 
 }
+my $splitprefix = basename(abs_path($inputs{xmap}), ".xmap");
 
 #print out input variables
 if( $hasbed==0 ) { print "Input FASTA: $inputs{fasta}\n"; } else { print "Input BED: $inputs{bed}\n"; }
@@ -87,9 +89,9 @@ print "Input XMAP: $inputs{xmap}\n";
 print "Input QCMAP: $inputs{qcmap}\n";
 print "Input RMCAP: $inputs{rcmap}\n";
 print "Input ERRBIN: $inputs{errbin}\n";
-if (exists $inputs{cmap}) {print "Input CMAP: $inputs{cmap}\n";}
-if (exists $inputs{ref}) {print "Input reference CMAP: $inputs{ref}\n";}
-print "Output folder: $inputs{output}\n";
+if (exists $inputs{cmap}) {print "Input CMAP: $inputs{cmap}\n";} else {print "Input CMAP: non provided\n";}
+if (exists $inputs{ref}) {print "Input reference CMAP: $inputs{ref}\n";} else {print "Input CMAP: non provided\n";}
+print "Output folder: $inputs{output}\n\n";
 print "Maximum labels between maps: $inputs{maxlab}\n";
 print "Maximum basepairs to fill between maps: $inputs{maxfill}\n";
 print "Maximum fragile site wobble: $inputs{wobble}\n";
@@ -99,8 +101,12 @@ print "\n";
 
 # Make sure dependency scripts exist
 my $scriptspath = abs_path(dirname($0));
-if (!-e "$scriptspath/calcFragileSites.pl" | !-e "$scriptspath/split_xmap_standalone.pl" | !-e "$scriptspath/gapFill.pl") {
+if (!-e "$scriptspath/calcFragileSites.pl" | !-e "$scriptspath/split_xmap_standalone.pl" | !-e "$scriptspath/gapFill.pl" | !-e "$scriptspath/extractFASTA_fromBED.pl" | !-e "$scriptspath/runCharacterizeFinal.py") {
 	die "ERROR: Dependency scripts not found at $scriptspath\n"; 
+}
+if( !-e $ENV{"HOME"}."/tools/RefAligner" | !-e $ENV{"HOME"}."/scripts/HybridScaffold/scripts/calc_cmap_stats.pl" ) {
+	# die "ERROR: Pipeline tools and scripts not found. Please ensure ~/tools and ~/scripts are properly set up.\n"; 
+	die "abs_path('~/tools/RefAligner') not found: $!\n"; 
 }
 
 # check output folder
@@ -110,11 +116,8 @@ if (-d $inputs{output} and $inputs{force} eq 0) {
 elsif (-d $inputs{output} and $inputs{force} eq 1) {
 	print "WARNING: Output directory $inputs{output} exists and will be overwritten\n";
 	rmtree($inputs{output}) or die "ERROR: Cannot remove existing output directory $inputs{output}: $!\n";
-	mkpath($inputs{output}) or die "ERROR: Cannot create output directory $inputs{output}: $!\n";
 }
-else {
-	mkpath($inputs{output}) or die "ERROR: Cannot create output directory $inputs{output}: $!\n";
-}
+mkpath($inputs{output}) or die "ERROR: Cannot create output directory $inputs{output}: $!\n";
 print "\n";
 
 
@@ -122,7 +125,6 @@ print "\n";
 # Step 1: Split input XMAP into individual anchor maps
 print "===Step 1: Split merged input XMAP into individual anchor maps===\n";
 # Usage: perl split_xmap_standalone.pl [xmap] [_q.cmap] [_r.cmap] [_contig prefix] [output folder]
-my $splitprefix = basename($prefix);
 my $cmd = "perl $scriptspath/split_xmap_standalone.pl $inputs{xmap} $inputs{qcmap} $inputs{rcmap} $splitprefix"."_contig $inputs{output}/contigs";
 print "Running command: $cmd\n";
 system($cmd);
@@ -134,11 +136,11 @@ print "===Step 2: Calculate fragile sites for input FASTA===\n";
 my $bed; 
 if ( $hasbed==1 and -e $inputs{bed}) {
 	print "Fragiles sites BED file $inputs{bed} provided.\nSkipping fragile sites calculation...\n\n";
-	copy("$inputs{bed}","$inputs{output}/") or warn "Copy of input BED $inputs{bed} failed: $!";
 	$bed = $inputs{bed};
+	copy("$inputs{bed}","$inputs{output}") or print "Copy of input BED $inputs{bed} failed: $!";
 }
 else {
-	my $stime = DateTime->now;
+	$stime = DateTime->now;
 	# Usage: perl calcFragilesSites.pl <input FASTA> [output.bed] [sequence bp +/- fsite to print out]
 	$cmd = "perl $scriptspath/calcFragileSites.pl $inputs{fasta} $inputs{output} $inputs{seq}";
 	print "Running command: $cmd\n";
@@ -149,8 +151,8 @@ else {
 	$bed = abs_path($inputs{output}."/".$bed);
 	#print "BED file: $bed\n";
 	
-	my $etime = DateTime->now;
-	my $dtime = DateTime::Format::Human::Duration->new();
+	$etime = DateTime->now;
+	$dtime = DateTime::Format::Human::Duration->new();
 	print 'Spent time at this step: ', $dtime->format_duration_between($etime, $stime); print "\n\n";
 }
 
@@ -158,6 +160,8 @@ else {
 print "===Step 3: Run gapFill.pl for each anchor map===\n";
 print "Processing anchor maps in parallel fashion...\n";
 print "\n";
+$stime = DateTime->now;
+
 my @xmaps = findXMAPs($inputs{output}."/contigs");
 @xmaps = sort @xmaps;
 
@@ -230,6 +234,9 @@ $pm->wait_all_children;
 find(\&wanted, "$inputs{output}/contigs"); 
 find(\&wanted2, "$inputs{output}/contigs"); 
 
+$etime = DateTime->now;
+$dtime = DateTime::Format::Human::Duration->new();
+print 'Spent time at this step: ', $dtime->format_duration_between($etime, $stime); print "\n\n";
 
 # using Parallel::Loops
 
@@ -263,7 +270,7 @@ find(\&wanted2, "$inputs{output}/contigs");
 #});
 
 
-# Step 4: Merge individual fragileSiteRepaired anchor maps
+# Step 4: Merge individual fragileSiteRepaired anchor maps and stitched BEDs
 print "\n===Step 4: Merge individual fragileSiteRepaired anchor maps===\n\n";
 my @qcmaps = findQCMAPs($inputs{output}."/contigs");
 @qcmaps = sort @qcmaps;
@@ -285,6 +292,7 @@ $cmd = "cd $inputs{output}; ~/tools/RefAligner -if $mergeFile -merge -o $splitpr
 print "Running command: $cmd\n";
 print "\n";
 system($cmd);
+my $finalmap = "$inputs{output}/$splitprefix"."_fragileSiteRepaired.cmap";
 print "\n";
 
 print "Generating merged stitchPositions BED...";
@@ -304,12 +312,14 @@ foreach my $bedFile (@beds) {
 		#print BEDOUT "$_\n";
 		push @bedOut, $_;
 	}
+	close BEDFILE; 
 }
 my ($bedOut_ref, $typeCount_ref) = sortBEDandCount(\@bedOut);
 @bedOut = @$bedOut_ref;
 my %typeCount = %$typeCount_ref;
 my $stitchCount = scalar(@bedOut);
 print BEDOUT join("\n",@bedOut);
+close BEDOUT; 
 print "done\n\n";
 
 #generate FASTA of stitchPositions sequences
@@ -330,9 +340,9 @@ while (<ORIGBEDFILE>) {
 			next;
 		}
 		chomp($_);
-		#print BEDOUT "$_\n";
 		push @origBed, $_;
 }
+close ORIGBEDFILE; 
 my ($origBedOut_ref, $origTypeCount_ref) = sortBEDandCount(\@origBed);
 my %origTypeCount = %$origTypeCount_ref;
 my $origCount = scalar(@origBed);
@@ -344,7 +354,6 @@ print "Total fragile sites repaired (stitched): $stitchCount\n";
 foreach my $type (sort keys %typeCount) {
 	print "\t$type: $typeCount{$type}\n";
 }
-
 print "\n";
 
 # usage: calc_cmap_stats.pl <CMAP_File>
@@ -357,11 +366,10 @@ if (-e "$dir/$script") {
 	print "Running command: $cmd\n";
 	system($cmd);
 	print "\n";
-	
-	my $file = "$inputs{output}/$splitprefix"."_fragileSiteRepaired.cmap";
-	print "Fragile site repaired merged CMAP $file stats:\n";
+	# my $file = "$inputs{output}/$splitprefix"."_fragileSiteRepaired.cmap";
+	print "Fragile site repaired merged CMAP $finalmap stats:\n";
 	#chdir $dir or die "ERROR: Cannot change directory to $dir: $!\n";	
-	$cmd = "perl $dir/$script $file";
+	$cmd = "perl $dir/$script $finalmap";
 	print "Running command: $cmd\n";
 	system($cmd);
 	print "\n";
@@ -372,26 +380,32 @@ else {
 print "\n";
 
 # Step 6: Generate new merged cmap with unmapped maps
-if (exists $inputs{cmap}) {
-	print "===Step 6: Process original assembly CMAP and generate new merged CMAP ===\n";
-	print "\n"; 
+print "\n\n===Step 6: Process original assembly CMAP and generate new merged CMAP ===\n\n";
+	if (exists $inputs{cmap}) {
 	my @origCmapIds = getCmapIds($inputs{cmap});
 	my @qryCmapIds = getCmapIds($inputs{qcmap});
 	my %in_qryCmapIds = map {$_ => 1} @qryCmapIds;
 	my @diff  = grep {not $in_qryCmapIds{$_}} @origCmapIds;
-	my $oldMap = abs_path($inputs{output}."/".$splitprefix."_fragileSiteRepaired.cmap");
+	# my $oldMap = abs_path($inputs{output}."/".$splitprefix."_fragileSiteRepaired.cmap");
+	my $oldMap = $finalmap; 
 	my $tempMap = $inputs{output}."/temp";
 	my $newMap = "$inputs{output}"."/"."$splitprefix"."_fragileSiteRepaired_merged";
 	#print "\tcmapIds in orig but not ref: ".join("\n\t",@diff)."\n";
-	$cmd = "cd $inputs{output}; ~/tools/RefAligner -merge -i $inputs{cmap} -selectid ".join(" ",@diff)." -o $tempMap";
-	print "\tRunning command: $cmd\n\n";
-	system($cmd);
-	print "\n";
-	$cmd = "cd $inputs{output}; ~/tools/RefAligner -merge -i $tempMap".".cmap -i $oldMap -o $newMap; rm -f $tempMap".".cmap";
-	print "\tRunning command: $cmd\n\n";
-	system($cmd);
-	print "\n";
-	$newMap = $newMap.".cmap";
+	if( scalar(@diff) == 0 ) { 
+		print "No unmapped cmaps were found in assembly.cmap. No merges necessary. \n$oldMap will be copied as is to $newMap.cmap\n"; 
+		copy( $oldMap, $newMap.".cmap" ) or print "WARNING: Unable to copy $oldMap to $newMap.cmap. Step 7 may fail\n"; 
+	}
+	else {
+		$cmd = "cd $inputs{output}; ~/tools/RefAligner -merge -i $inputs{cmap} -selectid ".join(" ",@diff)." -o $tempMap";
+		print "\tRunning command: $cmd\n\n";
+		system($cmd);
+		print "\n";
+		$cmd = "cd $inputs{output}; ~/tools/RefAligner -merge -i $tempMap".".cmap -i $oldMap -o $newMap; rm -f $tempMap".".cmap";
+		print "\tRunning command: $cmd\n\n";
+		system($cmd);
+		print "\n";
+	}
+	$finalmap = $newMap.".cmap";
 }
 else {
 	print "Skipping Step 6. Original assembly CMAP not provided\n";
@@ -399,12 +413,12 @@ else {
 }
 
 # Step 7: run CharacterizeFinal on newly merged cmap
-if ((exists $inputs{cmap}) && (exists $inputs{ref})) {
-	my $newMap = "$inputs{output}"."/"."$splitprefix"."_fragileSiteRepaired_merged.cmap";
-	print "===Step 7: Align new merged CMAP to reference and get stats ===\n";
-	print "\n"; 
+print "\n\n===Step 7: Align new merged CMAP to reference and get stats ===\n\n";
+if (-e $finalmap && (exists $inputs{ref})) {
+	# my $newMap = "$inputs{output}"."/"."$splitprefix"."_fragileSiteRepaired_merged.cmap";
 	#usage: runCharacterizeFinal.py [-h] [-t REFALIGNER] [-r REFERENCEMAP] [-q QUERYMAP] [-x XMAP] [-p PIPELINEDIR] [-a OPTARGUMENTS] [-n NUMTHREADS] 
-	$cmd = "cp runCharacterizeFinal.py ~/scripts/; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r $inputs{ref} -q $newMap -p ~/scripts/ -n $cpuCount";
+	# $cmd = "cp runCharacterizeFinal.py ~/scripts/; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r $inputs{ref} -q $newMap -p ~/scripts/ -n $cpuCount";
+	$cmd = "cp $scriptspath/runCharacterizeFinal.py ~/scripts/; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r $inputs{ref} -q $finalmap -p ~/scripts/ -n $cpuCount";
 	print "\tRunning command: $cmd\n\n";
 	system($cmd);
 }
@@ -414,19 +428,7 @@ else {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+# << Parting words >> 
 print "\n";
 my $dtEnd = DateTime->now;
 print "End time: "; print join ' ', $dtEnd->ymd, $dtEnd->hms; print "\n\n";
