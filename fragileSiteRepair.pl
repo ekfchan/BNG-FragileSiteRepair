@@ -4,7 +4,7 @@
 # If .bed file of fragile sites is not provided, an input (reference) fasta is expected, from which potential fragiles sites will be calculated. 
 # Assembly maps are stitched together based on alignments if the maps start and stop overlap a fragile site
 
-# Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --maxlab <max_label_gap_tolerence=0> --maxfill <max basepairs to fill between contigs = 35000> --wobble <fragile site wobble in bp = 0> --seq <sequence bp +/- fragile site to print in final BED> --force <overwrite output folder>
+# Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> [--ref <reference.cmap>] --output <output folder> --maxlab <max_label_gap_tolerence=0> --maxfill <max basepairs to fill between contigs = 35000> --wobble <fragile site wobble in bp = 0> --seq <sequence bp +/- fragile site to print in final BED> --force <overwrite output folder>
 
 use strict;
 use warnings;
@@ -52,17 +52,17 @@ print "\n";
 my %inputs = (); 
 my $prefix;
 $inputs{'force'}=0;
-GetOptions( \%inputs, 'fasta:s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'bed:s', 'seq:i'); 
+GetOptions( \%inputs, 'fasta:s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'bed:s', 'seq:i', 'cmap:s', 'ref:s'); 
 
 my $hasbed = 0; 
 if ( (!exists $inputs{fasta} & !exists $inputs{bed}) | !exists $inputs{xmap} | !exists $inputs{qcmap} | !exists $inputs{rcmap} | !exists $inputs{errbin} | !exists $inputs{output} ) {
-	print "Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bd>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --maxlab <max_label_gap_tolerence> --maxfill <max basepairs to fill between contigs> --wobble <fragile site wobble in bp> --seq <sequence bp +/- fragile site to print in final BED> --force <overwrite output folder>\n"; 
+	print "Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> [--ref <reference.cmap>] --output <output folder> --maxlab <max_label_gap_tolerence=0> --maxfill <max basepairs to fill between contigs = 35000> --wobble <fragile site wobble in bp = 0> --seq <sequence bp +/- fragile site to print in final BED> --force <overwrite output folder>\n"; 
 	exit 0; 
 }
 else {
 	print "\nStart time: "; print join ' ', $dtStart->ymd, $dtStart->hms; print "\n\n";
 	
-	foreach my $key ("xmap","qcmap","rcmap","errbin","output","bed","fasta") {
+	foreach my $key ("xmap","qcmap","rcmap","errbin","output","bed","fasta", "cmap", "ref") {
 		if (exists $inputs{$key} and $inputs{$key} =~ /[a-z]/i) {
 			$inputs{$key} = abs_path($inputs{$key});
 		}
@@ -87,6 +87,8 @@ print "Input XMAP: $inputs{xmap}\n";
 print "Input QCMAP: $inputs{qcmap}\n";
 print "Input RMCAP: $inputs{rcmap}\n";
 print "Input ERRBIN: $inputs{errbin}\n";
+if (exists $inputs{cmap}) {print "Input CMAP: $inputs{cmap}\n";}
+if (exists $inputs{ref}) {print "Input reference CMAP: $inputs{ref}\n";}
 print "Output folder: $inputs{output}\n";
 print "Maximum labels between maps: $inputs{maxlab}\n";
 print "Maximum basepairs to fill between maps: $inputs{maxfill}\n";
@@ -369,6 +371,63 @@ else {
 	print "perl script calc_cmap_stats.pl not found at $script\n"; }
 print "\n";
 
+# Step 6: Generate new merged cmap with unmapped maps
+if (exists $inputs{cmap}) {
+	print "===Step 6: Process original assembly CMAP and generate new merged CMAP ===\n";
+	print "\n"; 
+	my @origCmapIds = getCmapIds($inputs{cmap});
+	my @qryCmapIds = getCmapIds($inputs{qcmap});
+	my %in_qryCmapIds = map {$_ => 1} @qryCmapIds;
+	my @diff  = grep {not $in_qryCmapIds{$_}} @origCmapIds;
+	my $oldMap = abs_path($inputs{output}."/".$splitprefix."_fragileSiteRepaired.cmap");
+	my $tempMap = $inputs{output}."/temp";
+	my $newMap = "$inputs{output}"."/"."$splitprefix"."_fragileSiteRepaired_merged";
+	#print "\tcmapIds in orig but not ref: ".join("\n\t",@diff)."\n";
+	$cmd = "cd $inputs{output}; ~/tools/RefAligner -merge -i $inputs{cmap} -selectid ".join(" ",@diff)." -o $tempMap";
+	print "\tRunning command: $cmd\n\n";
+	system($cmd);
+	print "\n";
+	$cmd = "cd $inputs{output}; ~/tools/RefAligner -merge -i $tempMap".".cmap -i $oldMap -o $newMap; rm -f $tempMap".".cmap";
+	print "\tRunning command: $cmd\n\n";
+	system($cmd);
+	print "\n";
+	$newMap = $newMap.".cmap";
+}
+else {
+	print "Skipping Step 6. Original assembly CMAP not provided\n";
+	print "\n";
+}
+
+# Step 7: run CharacterizeFinal on newly merged cmap
+if ((exists $inputs{cmap}) && (exists $inputs{ref})) {
+	my $newMap = "$inputs{output}"."/"."$splitprefix"."_fragileSiteRepaired_merged.cmap";
+	print "===Step 7: Align new merged CMAP to reference and get stats ===\n";
+	print "\n"; 
+	#usage: runCharacterizeFinal.py [-h] [-t REFALIGNER] [-r REFERENCEMAP] [-q QUERYMAP] [-x XMAP] [-p PIPELINEDIR] [-a OPTARGUMENTS] [-n NUMTHREADS] 
+	$cmd = "cp runCharacterizeFinal.py ~/scripts/; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r $inputs{ref} -q $newMap -p ~/scripts/ -n $cpuCount";
+	print "\tRunning command: $cmd\n\n";
+	system($cmd);
+}
+else {
+	print "Skipping Step 7. Original assembly CMAP or reference CMAP not provided\n";
+	print "\n";
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+print "\n";
 my $dtEnd = DateTime->now;
 print "End time: "; print join ' ', $dtEnd->ymd, $dtEnd->hms; print "\n\n";
 my $span = DateTime::Format::Human::Duration->new();
@@ -477,4 +536,32 @@ sub wanted2 {
 	m/_merged_contigs_q/ and do { 
 		unlink $_ or warn "Could not unlink file $_\n"; }; }
 	
+sub getCmapIds {
+	my $cmapFile = shift;
+	my @cmapIds;
+	open CMAP, "<$cmapFile" or die "ERROR: Could not open $cmapFile: $!\n";
+	while (<CMAP>) {
+		my $line = $_;
+		chomp($line);
+		#if header then skip
+		if ($line =~ /^#/) {
+			next; }
+		else {
+			my @s = split(/\t/,$line);
+			for (my $i=0; $i<scalar(@s); $i++) {
+				$s[$i] =~ s/^\s+|\s+$//g; 
+			}
+			push @cmapIds, $s[0];
+		}
+	}
+	@cmapIds = unique(@cmapIds);
+	
+	return @cmapIds;
+}
 
+sub unique {
+  my %seen;
+  return grep { !$seen{$_}++ } @_;
+}
+	
+	
