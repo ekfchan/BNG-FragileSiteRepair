@@ -20,6 +20,10 @@ if( scalar(@ARGV)<1 or scalar(@ARGV)>3 ) {
 	exit 0; 
 }
 
+print "\n";
+print qx/ps -o args $$/;
+print "\n";
+
 # distance in basepairs between nicks to consider a potential fragile site
 my $bp_t1 = 500; #maximum distance between nicks on opposite strands (moving towards each other) to count as TypeI
 my $bp_t2 = 500; #maximum distance between nicks on opposite strands (moving away from each other) to count as TypeII

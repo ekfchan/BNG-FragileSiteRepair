@@ -2,7 +2,7 @@
 
 # A wrapper script to gap-fill: stitch together genome maps that are sufficiently close to each other and (optionally) overlapping fragile sites as predicted from reference genome map.
 
-# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>]
+# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n <CPU cores to use>]
 
 # Details: 
 # * Assumption: that contigs on XMAP is being read from left to right and is sorted by RefStartPos
@@ -30,10 +30,10 @@ print "\n";
 
 ## << usage statement and variable initialisation >>
 my %inputs = (); 
-GetOptions( \%inputs, 'x|xmap=s', 'q|qcmap=s', 'r|rcmap=s', 'e|errbin=s', 'o|output|prefix=s', 'bed|b:s', 'round:i', 'maxlab:i', 'maxfill:i', 'wobble:i'); 
+GetOptions( \%inputs, 'x|xmap=s', 'q|qcmap=s', 'r|rcmap=s', 'e|errbin=s', 'o|output|prefix=s', 'bed|b:s', 'round:i', 'maxlab:i', 'maxfill:i', 'wobble:i', 'n:i'); 
 
 if( !exists $inputs{x} | !exists $inputs{q} | !exists $inputs{r} | !exists $inputs{e} | !exists $inputs{o} ) {
-	print "usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round=1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 10000>] [--wobble <fragile site wobble in bp = 250>]\n"; 
+	print "Usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n <CPU cores to use>]\n"; 
 	exit 0; 
 }
 
@@ -47,6 +47,7 @@ my $wobble = 250;
 if( exists $inputs{wobble} ) { $wobble = $inputs{wobble}; }
 my $maxlab = 0; 
 if( exists $inputs{maxlab} ) { $maxlab = $inputs{maxlab}; }
+
 
 open XMAP, $inputs{x} or die $!;
 open QCMAP, $inputs{q} or die $!;
@@ -92,6 +93,8 @@ my $cpu  = $info->device( CPU => my %options );
 my $cpuCount = $cpu->count;
 #get system RAM
 my $mem = (((&totalmem / 1024) / 1024)) / 1024; 
+if( exists $inputs{n} ) { $cpuCount = $inputs{n}; }
+
 
 print "\n";
 
