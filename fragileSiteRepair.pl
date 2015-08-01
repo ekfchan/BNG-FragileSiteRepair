@@ -481,12 +481,13 @@ if (defined $inputs{bnx}) {
 	$cmd = "cd $alignmolDir; ~/tools/RefAligner -ref $finalmap -o $splitprefix"."_fragileSiteRepaired_merged_alignmol -i $inputs{bnx} -maxthreads $cpuCount -maxmem $mem -usecolor 1 -FP 1.5 -FN 0.15 -sd 0. -sf 0.2 -sr 0.03 -res 3.3 -output-veto-filter intervals.txt\$ -T 1e-9 -usecolor 1 -S -1000 -biaswt 0 -res 3.3 -resSD 0.75 -outlier 0.0001 -extend 1 -BestRef 1 -maptype 1 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -stdout -stderr";
 	print "\tRunning command: $cmd\n\n";
 	system($cmd);
+	sleep(5);
 	
 	#split xmap into _contig maps
 	my $alignmolXmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_alignmol.xmap";
 	my $alignmolQmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_alignmol_q.cmap";
 	my $alignmolRmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_alignmol_r.cmap";
-	my $alignmolPrefix = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_alignmol_contig";
+	my $alignmolPrefix = "$splitprefix"."_fragileSiteRepaired_merged_alignmol_contig";
 	#mkpath("$alignmolDir/contigs") or die "ERROR: Cannot create output directory $inputs{output}/alignmol/contigs: $!\n";
 	# Usage: perl split_xmap_standalone.pl [xmap] [_q.cmap] [_r.cmap] [_contig prefix] [output folder]
 	$cmd = "perl $scriptspath/split_xmap_standalone.pl $alignmolXmap $alignmolQmap $alignmolRmap $alignmolPrefix $alignmolDir/contigs";
