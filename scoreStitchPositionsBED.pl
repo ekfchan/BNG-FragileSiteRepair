@@ -6,7 +6,7 @@
 use strict;
 use warnings;
 use Cwd qw(abs_path);
-#use Data::Dumper;
+use Data::Dumper;
 use File::Basename;
 
 #my $refId=$ARGV[2];
@@ -255,6 +255,7 @@ foreach my $bedEntry_ref (@bedIn) {
 				#my $molMatchConfCulm=0;
 				#my $molMatchCountCulm=0;
 				my @allIds;
+				my %confHash;
 				foreach my $molxmapEntry_ref (@molxmap) {
 				#h XmapEntryID	QryContigID	RefContigID	QryStartPos	QryEndPos	RefStartPos	RefEndPos	Orientation	Confidence	HitEnum	QryLen	RefLen	LabelChannel	Alignment
 				#f int        	int        	int        	float      	float    	float      	float    	string     	float     	string 	float 	float 	int         	string   
@@ -266,6 +267,7 @@ foreach my $bedEntry_ref (@bedIn) {
 						my $molrefLabels = "";
 						my $molqryLabels = "";
 						my %molmatchPairs;
+						
 						# process alignment doublet string
 						foreach my $molpair (@mols) {
 							#print "Doublet: $pair\n";
@@ -280,28 +282,67 @@ foreach my $bedEntry_ref (@bedIn) {
 						my $low = $genomeMapStartLabelIds{$bedEntryCount} - 50;
 						my $high = $genomeMapEndLabelIds{$bedEntryCount} + 50;
 						#for (my $i=$low; $i<$genomeMapEndLabelIds{$bedEntryCount}; $i++) {
-						for (my $i=$low; $i<=$genomeMapStartLabelIds{$bedEntryCount}; $i++) {
+						ILOOP: for (my $i=$low; $i<=$genomeMapStartLabelIds{$bedEntryCount}; $i++) {
+							#print "STARTING NEW ILOOP\n";
 							#for (my $j=$genomeMapStartLabelIds{$bedEntryCount}; $j<=$high; $j++) {
-								for (my $j=$genomeMapEndLabelIds{$bedEntryCount}; $j<=$high; $j++) {
+							my $repeatIcount=0;
+								JLOOP: for (my $j=$genomeMapEndLabelIds{$bedEntryCount}; $j<=$high; $j++) {								
 								if ($j != $i) {
 								#print "\t\tLooking for labels $i and $j\n";
-									if (($molrefLabels =~ /\b$i\b/) && ($molrefLabels =~ /\b$j\b/)) {
-										my $conf=1; #match value
+									if (($molrefLabels =~ /\b$i\b/) && ($molrefLabels =~ /\b$j\b/)) {									
+										
+										my $conf=1; #confidence match value
+										#my $conf = $molxmapEntry{'Confidence'};
+										
 										if (($i ==  $genomeMapStartLabelIds{$bedEntryCount}) && ($j == $genomeMapEndLabelIds{$bedEntryCount})) {
 											#push @perfectMatchIds, $molxmapEntry{'QryContigID'};
 											#$conf = $molxmapEntry{'Confidence'};
 											#$conf = $conf * 2;
-											$perfectMatchHash{$molxmapEntry{'QryContigID'}} = $conf * 3;
+											#$perfectMatchHash{$molxmapEntry{'QryContigID'}} = $conf * 10;
+											if (exists $confHash{$molxmapEntry{'QryContigID'}}) {
+												$confHash{$molxmapEntry{'QryContigID'}} = $confHash{$molxmapEntry{'QryContigID'}} + ($conf*2);
+											} 
+											else {$confHash{$molxmapEntry{'QryContigID'}} = ($conf*2);}
 											push @allIds, $molxmapEntry{'QryContigID'};
 											#$conf = 1;
+											#$repeatIcount++;
 										}
 										else {
 											#$conf = $molxmapEntry{'Confidence'};
-											if (exists $molMatchHash{$molxmapEntry{'QryContigID'}}) {
-												$molMatchHash{$molxmapEntry{'QryContigID'}} = $molMatchHash{$molxmapEntry{'QryContigID'}} + $conf;
+											# my $multiplier = 1;
+											my $iDist = abs($genomeMapStartLabelIds{$bedEntryCount} - $i);
+											my $jDist = abs($j - $genomeMapEndLabelIds{$bedEntryCount});
+											# if (! ($iDist==0 && $jDist==0)) {
+												# $multiplier = $iDist + $jDist;
+											# }
+											$conf = $conf + $iDist + $jDist;				
+											#if ($iDist< 1) { $iDist = 1;}
+											#if ($jDist< 1) { $jDist = 1;}
+											#my $multiplier=1;
+											#my $multiplier = $iDist + $jDist;
+											#if ($multiplier < 1) {$multiplier = 1;}
+											#$conf = $conf * ($multiplier);
+											if (exists $confHash{$molxmapEntry{'QryContigID'}}) {
+												#$multiplier=1;
+												#$conf = $conf * ($multiplier);
+												#if ($repeatIcount < 99999999999) {
+													#$molMatchHash{$molxmapEntry{'QryContigID'}} = $molMatchHash{$molxmapEntry{'QryContigID'}} + $conf;
+													$confHash{$molxmapEntry{'QryContigID'}} = $confHash{$molxmapEntry{'QryContigID'}} + ($conf);
+													$repeatIcount++;
+													#print "\t\tMolecule Match repeatCounter: $repeatIcount\n";
+												#}
+												#else {
+												#	#print "Maximum Matches for $molxmapEntry{'QryContigID'} i: $i $j reached repeatCounter: $repeatIcount\n";	
+												#	next ILOOP;
+												#}
 											}
 											else {
-												$molMatchHash{$molxmapEntry{'QryContigID'}} = $conf * 2;
+												#$multiplier=5;
+												#$conf = $conf * ($multiplier);
+												#$molMatchHash{$molxmapEntry{'QryContigID'}} = $conf;
+												$confHash{$molxmapEntry{'QryContigID'}} = ($conf);
+												#$repeatIcount++;
+												#print "\tUniqueMolecule Match repeatCounter: $repeatIcount\n";
 											}
 											push @allIds, $molxmapEntry{'QryContigID'};
 											#$molMatchHash{$molxmapEntry{'QryContigID'}} = $conf;
@@ -363,16 +404,43 @@ foreach my $bedEntry_ref (@bedIn) {
 				}
 				else { $perfectMatchConfAvg = 0;}
 				
-				my $totalHits = $molMatchCount + $perfectMatchCount;
-				#my $totalHits = scalar(@allIds);
+				#my $totalHits = $molMatchCount + $perfectMatchCount;
+				my $totalHits = scalar(@allIds);
 				my $totalMol = scalar(unique(@allIds));
-				my $totalConf = $molMatchConf + $perfectMatchConf;
+				#my $totalConf = $molMatchConf + $perfectMatchConf;
+				
+				my %ids;
+				for (@allIds) {
+					#print "Matched Molecule Ids:\n".join("\n\t",@allIds)."\n";
+					$ids{$_}++;
+				}
+				
+				# debug
+				# if ($bedEntryCount == 16) {
+					# for (unique(@allIds)) {
+						# print "\n\tMatched Molecule Id: $_ TotalConf: $confHash{$_}\n";
+					# }
+				# }
+				
+				
+				my $totalConf=0;
+				foreach my $id (keys %confHash) {
+					$totalConf = $totalConf + $confHash{$id};
+				}
+				
+				#print "Count Hash:\n";
+				#print "\n\t".Dumper(\%ids)."\n";
+				#print "Confidence Hash:\n";
+				#print "\n\t".Dumper(\%confHash)."\n";
 				
 				my $totalConfAvg=0;
 				if (($totalConf != 0) && ($totalMol != 0)) {
 					$totalConfAvg = $totalConf/$totalMol;
 				}
 				else { $totalConfAvg = 0;}
+				
+				#test
+				#$totalMol = $totalHits;
 				
 				#my $perfectMatchs = scalar(unique(@perfectMatchIds));
 				#my $logTotalConf = log10($totalConf);
@@ -388,12 +456,20 @@ foreach my $bedEntry_ref (@bedIn) {
 				
 				#my $score = (sprintf "%.3f", $logTotalConf);
 				#my $score = (sprintf "%.2f", $totalConfAvg);
-				my $score = int($totalConfAvg);
-				print "\t\tRecommended score: $score AltScore: ".int(($totalConf/$totalHits))."\n";	
+				my $score = int($totalConf);
+				#my $score = int($totalConfAvg);
+				my $log10Score = log10($score);
+				my $logScore = log($score);
+				my $score2 = log10($totalConf);
+				my $score3 = $score*($totalMol/$totalHits);
+				$score = (sprintf "%.3f", $logScore);
+				#$score = (sprintf "%.2f", ($totalConf/$totalHits)); 
+				print "\t\tRecommended score: $score log10(score): $log10Score log(score): $logScore AltScore: $score3\n";
+				#" AltScore: ".int(($totalConf/$totalHits))." AltLog10Score: $score2 AltLogScore: $logTotalConf\n";	
 				
 				#CMapId	Start	End	Type	Score	Strand	ThickStart	ThickEnd	ItemRgba	Sequence
 				#my %bedEntry = %$bedEntry_ref;
-				my $bedLineOut = "$bedCmapId\t$bedStart\t$bedEnd\t$score\t$bedEntry{Strand}\t$bedEntry{ThickStart}\t$bedEntry{ThickEnd}\t$bedEntry{ItemRgba}";
+				my $bedLineOut = "$bedCmapId\t$bedStart\t$bedEnd\t$bedEntry{Type}\t$score\t$bedEntry{Strand}\t$bedEntry{ThickStart}\t$bedEntry{ThickEnd}\t$bedEntry{ItemRgba}";
 				if (defined $bedEntry{Sequence}) {
 					$bedLineOut = $bedLineOut."\t$bedEntry{Sequence}";
 				}
