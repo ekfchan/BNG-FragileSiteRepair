@@ -21,6 +21,9 @@ use Parallel::ForkManager;
 use DateTime;
 use DateTime::Format::Human::Duration;
 #use Data::Dumper;
+use FindBin;	#locate this script 
+use lib "$FindBin::Bin";
+use summarise qw(getCmapIds calcCmapStats getFsiteStats); 
 
 my $dtStart = DateTime->now;
 my $stime = DateTime->now;
@@ -216,6 +219,7 @@ foreach my $xmap (@xmaps) {
 	#print "Base: $base\n";
 	my $qcmap = $base."_q.cmap";
 	my $rcmap = $base."_r.cmap";
+	my $outdir = abs_path($inputs{output}."/contigs/");
 	if (-e $xmap and -e $qcmap and -e $rcmap) {
 		print "XMAP: $xmap\n";
 		print "QCMAP: $qcmap\n";
@@ -223,7 +227,10 @@ foreach my $xmap (@xmaps) {
 		print "\n";
 		
 		# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n CPU cores to use]
-		$cmd = "perl $scriptspath/gapFill.pl -x $xmap -q $qcmap -r $rcmap -e $inputs{errbin} -o $base"."_fragileSiteRepaired --bed $bed --maxlab $inputs{maxlab} --maxfill $inputs{maxfill} --wobble $inputs{wobble} --n $cpuCount";
+		# $cmd = "perl $scriptspath/gapFill.pl -x $xmap -q $qcmap -r $rcmap -e $inputs{errbin} -o $base"."_fragileSiteRepaired --bed $bed --maxlab $inputs{maxlab} --maxfill $inputs{maxfill} --wobble $inputs{wobble} --n $cpuCount";
+		# Usage: perl stitchFsites.pl --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output_folder> --bed <.bed fragile sites file> [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n <CPU cores to use>]
+		$cmd = "perl $scriptspath/stitchFsites.pl --xmap $xmap --qcmap $qcmap --rcmap $rcmap --errbin $inputs{errbin} --output $outdir --bed $bed --maxlab $inputs{maxlab} --maxfill $inputs{maxfill} --wobble $inputs{wobble} --n $cpuCount";
+
 		print "\tRunning command: $cmd\n";
 		print "\n";
 		#system($cmd) or die "ERROR: $cmd failed: $!\n";
@@ -343,50 +350,53 @@ print "\n";
 print "===Step 5: Calculate stats for merged fragileSiteRepaired CMAP===\n";
 print "\n"; 
 #get stats of original input BED
-my @origBed;
-open ORIGBEDFILE, "<$bed" or die "ERROR: Could not open $bed: $!\n";
-while (<ORIGBEDFILE>) {
-		if ($_ =~ /^#/) {
-			next;
-		}
-		chomp($_);
-		push @origBed, $_;
-}
-close ORIGBEDFILE; 
-my ($origBedOut_ref, $origTypeCount_ref) = sortBEDandCount(\@origBed);
-my %origTypeCount = %$origTypeCount_ref;
-my $origCount = scalar(@origBed);
-print "Total potential fragile sites: $origCount\n";
-foreach my $type (sort keys %origTypeCount) {
-	print "\t$type: $origTypeCount{$type}\n";
-}
-print "Total fragile sites repaired (stitched): $stitchCount\n";
-foreach my $type (sort keys %typeCount) {
-	print "\t$type: $typeCount{$type}\n";
-}
+getFsiteStats($bed); 
+# my @origBed;
+# open ORIGBEDFILE, "<$bed" or die "ERROR: Could not open $bed: $!\n";
+# while (<ORIGBEDFILE>) {
+# 		if ($_ =~ /^#/) {
+# 			next;
+# 		}
+# 		chomp($_);
+# 		push @origBed, $_;
+# }
+# close ORIGBEDFILE; 
+# my ($origBedOut_ref, $origTypeCount_ref) = sortBEDandCount(\@origBed);
+# my %origTypeCount = %$origTypeCount_ref;
+# my $origCount = scalar(@origBed);
+# print "Total potential fragile sites: $origCount\n";
+# foreach my $type (sort keys %origTypeCount) {
+# 	print "\t$type: $origTypeCount{$type}\n";
+# }
+# print "Total fragile sites repaired (stitched): $stitchCount\n";
+# foreach my $type (sort keys %typeCount) {
+# 	print "\t$type: $typeCount{$type}\n";
+# }
 print "\n";
 
 # usage: calc_cmap_stats.pl <CMAP_File>
-my $dir = glob("~/scripts/HybridScaffold/scripts");
-my $script = "calc_cmap_stats.pl";
-if (-e "$dir/$script") {
+# my $dir = glob("~/scripts/HybridScaffold/scripts");
+# my $script = "calc_cmap_stats.pl";
+# if (-e "$dir/$script") {
 	print "Original query CMAP $inputs{qcmap} stats:\n";
+	calcCmapStats($inputs{qcmap}); 
 	#chdir $dir or die "ERROR: Cannot change directory to $dir: $!\n";	
-	my $cmd = "perl $dir/$script $inputs{qcmap}";
-	print "Running command: $cmd\n";
-	system($cmd);
+	# my $cmd = "perl $dir/$script $inputs{qcmap}";
+	# print "Running command: $cmd\n";
+	# system($cmd);
 	print "\n";
 	# my $file = "$inputs{output}/$splitprefix"."_fragileSiteRepaired.cmap";
 	print "Fragile site repaired merged CMAP $finalmap stats:\n";
+	calcCmapStats($finalmap); 
 	#chdir $dir or die "ERROR: Cannot change directory to $dir: $!\n";	
-	$cmd = "perl $dir/$script $finalmap";
-	print "Running command: $cmd\n";
-	system($cmd);
+	# $cmd = "perl $dir/$script $finalmap";
+	# print "Running command: $cmd\n";
+	# system($cmd);
 	print "\n";
 	
-}
-else {
-	print "perl script calc_cmap_stats.pl not found at $script\n"; }
+# }
+# else {
+# 	print "perl script calc_cmap_stats.pl not found at $script\n"; }
 print "\n";
 
 # Step 6: Generate new merged cmap with unmapped maps
@@ -447,7 +457,7 @@ if (defined $inputs{runSV}) {
 		my $mres = "2.0";
 		if (-e $finalmap && -e $errbin) {
 			# Usage: callSV.pl --ref <reference.cmap> --cmap <input.cmap> --errbin <input.errbin> --optarg <optArguments.xml> --outdir <output_folder> [--prefix <contig_prefix>] [--mres <pixels_to_reduce_ref> [--force]
-			$cmd = "perl callSV.pl --ref $inputs{ref} --cmap $finalmap --errbin $errbin --optarg $inputs{optArgs} --outdir $inputs{output}/alignref_final_sv --mres $mres --n $cpuCount --prefix $splitprefix"."_fragileSiteRepaired_merged";
+			$cmd = "perl $scriptspath/callSV.pl --ref $inputs{ref} --cmap $finalmap --errbin $errbin --optarg $inputs{optArgs} --outdir $inputs{output}/alignref_final_sv --mres $mres --n $cpuCount --prefix $splitprefix"."_fragileSiteRepaired_merged";
 			if ($inputs{force} eq 1) {$cmd = $cmd." --force";}
 			print "\tRunning command: $cmd\n\n";
 			system($cmd);
@@ -563,7 +573,8 @@ sub findBED {
 sub findBEDs {
 	my $in = shift;
 	opendir(DIR, $in);
-	my @beds = grep(/\.bed$/,readdir(DIR));
+	# my @beds = grep(/\.bed$/,readdir(DIR));
+	my @beds = grep(/stitchPositions\.bed$/,readdir(DIR));
 	closedir(DIR);
 	
 	#@beds = map { $_->[1] }
@@ -611,28 +622,28 @@ sub wanted2 {
 	m/_merged_contigs_q/ and do { 
 		unlink $_ or warn "Could not unlink file $_\n"; }; }
 	
-sub getCmapIds {
-	my $cmapFile = shift;
-	my @cmapIds;
-	open CMAP, "<$cmapFile" or die "ERROR: Could not open $cmapFile: $!\n";
-	while (<CMAP>) {
-		my $line = $_;
-		chomp($line);
-		#if header then skip
-		if ($line =~ /^#/) {
-			next; }
-		else {
-			my @s = split(/\t/,$line);
-			for (my $i=0; $i<scalar(@s); $i++) {
-				$s[$i] =~ s/^\s+|\s+$//g; 
-			}
-			push @cmapIds, $s[0];
-		}
-	}
-	@cmapIds = unique(@cmapIds);
+# sub getCmapIds {
+# 	my $cmapFile = shift;
+# 	my @cmapIds;
+# 	open CMAP, "<$cmapFile" or die "ERROR: Could not open $cmapFile: $!\n";
+# 	while (<CMAP>) {
+# 		my $line = $_;
+# 		chomp($line);
+# 		#if header then skip
+# 		if ($line =~ /^#/) {
+# 			next; }
+# 		else {
+# 			my @s = split(/\t/,$line);
+# 			for (my $i=0; $i<scalar(@s); $i++) {
+# 				$s[$i] =~ s/^\s+|\s+$//g; 
+# 			}
+# 			push @cmapIds, $s[0];
+# 		}
+# 	}
+# 	@cmapIds = unique(@cmapIds);
 	
-	return @cmapIds;
-}
+# 	return @cmapIds;
+# }
 
 sub unique {
   my %seen;
