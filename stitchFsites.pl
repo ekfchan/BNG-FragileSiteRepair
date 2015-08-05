@@ -15,7 +15,7 @@ use Sys::MemInfo qw(totalmem);
 use List::Util qw( max );	#qw( min max )
 use FindBin;	#locate this script 
 use lib "$FindBin::Bin";
-use stitchFsites qw(mergeContigs doalignment appendStitched);
+use stitchFsites qw(mergeContigs doalignment appendStitched getXmapOpts);
 use summarise qw(getCmapIds calcCmapStats getFsiteStats); 
 
 sub makeNewID; 
@@ -270,7 +270,7 @@ MAIN: for (my $i=0; $i < scalar(@xmap); $i++) {
 					my $labelsDistance = $secondRefStartPosSite - $firstRefEndPosSite - 1;	#-1 means start and stop at same label
 					print "\tLabels: $labelsDistance\n";
 
-					if ($labelsDistance <= $maxlab) {
+					if ($labelsDistance > -1 && $labelsDistance <= $maxlab) {
 						print "\t\tLabel filter: PASS\n";				
 
 						# Only stitch contigs if they overlap with fsite. 

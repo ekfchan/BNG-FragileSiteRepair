@@ -11,7 +11,7 @@ BEGIN {
 	our $VERSION     = 1.00;
 	our @ISA         = qw(Exporter);
 	our @EXPORT      = ();
-	our @EXPORT_OK   = qw(mergeContigs doalignment appendStitched);
+	our @EXPORT_OK   = qw(mergeContigs doalignment appendStitched getXmapOpts);
 }
 
 sub mergeContigs {
@@ -162,27 +162,28 @@ sub doalignment {
 	}
 
 	# get RefAligner options
-	my $opts; 
-	open (XMAP, "<", $xmap) or die $!;
-	while (my $line = <XMAP>) {
-		chomp $line;
-		if ($line =~ m=tools/RefAligner=) { 
-			$opts = $line;
-			last;
-		} else { next; }
-	}
-	close XMAP; 
-	$opts =~ s/^.+RefAligner\s//;
-	$opts =~ s/-i\s[^\s]+\s//g; 
-	$opts =~ s/-o\s[^\s]+\s//g; 
-	$opts =~ s/-ref\s[^\s]+\s//g; 
-	$opts =~ s/-maxthreads\s[^\s]+\s//g; 
-	$opts =~ s/-maxmem\s[^\s]+\s//g; 
-	$opts =~ s/-output-veto-filter\s[^\s]+\s//g; 
-	$opts =~ s/-output-filter\s[^\s]+\s//g; 
-	$opts =~ s/-readparameters\s[^\s]+\s//g; 
-	$opts =~ s/-stderr\s+//g; 
-	$opts =~ s/-stdout\s+//g; 
+	my $opts = getXmapOpts($xmap); 
+	# my $opts; 
+	# open (XMAP, "<", $xmap) or die $!;
+	# while (my $line = <XMAP>) {
+	# 	chomp $line;
+	# 	if ($line =~ m=tools/RefAligner=) { 
+	# 		$opts = $line;
+	# 		last;
+	# 	} else { next; }
+	# }
+	# close XMAP; 
+	# $opts =~ s/^.+RefAligner\s//;
+	# $opts =~ s/-i\s[^\s]+\s//g; 
+	# $opts =~ s/-o\s[^\s]+\s//g; 
+	# $opts =~ s/-ref\s[^\s]+\s//g; 
+	# $opts =~ s/-maxthreads\s[^\s]+\s//g; 
+	# $opts =~ s/-maxmem\s[^\s]+\s//g; 
+	# $opts =~ s/-output-veto-filter\s[^\s]+\s//g; 
+	# $opts =~ s/-output-filter\s[^\s]+\s//g; 
+	# $opts =~ s/-readparameters\s[^\s]+\s//g; 
+	# $opts =~ s/-stderr\s+//g; 
+	# $opts =~ s/-stdout\s+//g; 
 
 	# RefAligner filters 
 	my $ofilter = q/-output-filter '(.[cx]map)$'/;
@@ -237,6 +238,36 @@ sub appendStitched {
 	my @s = split('\t',$fsiteline); 
 	print OUT "$RefContigID\t$leftPos\t$rightPos\t", join("\t",@s[3..($#s)]), "\n"; 
 	close OUT; 
+}
+
+sub getXmapOpts {
+	#ussage: getXmapOpts(xmap_file)
+	#returns:  string of options to RefAligner, with dataset specific opts stripped
+	my $xmap = shift; 
+
+	my $opts; 
+	open (XMAP, "<", $xmap) or die $!;
+	while (my $line = <XMAP>) {
+		chomp $line;
+		if ($line =~ m=tools/RefAligner=) { 
+			$opts = $line;
+			last;
+		} else { next; }
+	}
+	close XMAP; 
+	$opts =~ s/^.+RefAligner\s//;
+	$opts =~ s/-i[f]?\s\S+(\s|$)//g;	#input maps
+	$opts =~ s/-o\s\S+(\s|$)//g;	#output prefix
+	$opts =~ s/-ref\s\S+(\s|$)//g;	#input reference cmap 
+	$opts =~ s/-maxthreads\s\S+(\s|$)//g;	#maximum threads to use
+	$opts =~ s/-maxmem\s\S+(\s|$)//g;	#max memory in Gbytes
+	$opts =~ s/-output-veto-filter\s\S+(\s|$)//g;	#outputs to veto
+	$opts =~ s/-output-filter\s\S+(\s|$)//g;	#outputs to keep 
+	$opts =~ s/-readparameters\s\S+(\s|$)//g;	# error (noise) parameters
+	$opts =~ s/-stderr(\s|$)//g;	#redirect stdout to file.stdout
+	$opts =~ s/-stdout(\s|$)//g;	#redirect stderr to file.stdout, else to file.stdout
+
+	return( $opts ); 
 }
 
 1; 

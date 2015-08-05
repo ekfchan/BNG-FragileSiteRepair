@@ -24,6 +24,7 @@ use DateTime::Format::Human::Duration;
 use FindBin;	#locate this script 
 use lib "$FindBin::Bin";
 use summarise qw(getCmapIds calcCmapStats getFsiteStats); 
+use stitchFsites qw(getXmapOpts); 
 
 my $dtStart = DateTime->now;
 my $stime = DateTime->now;
@@ -40,7 +41,7 @@ print "\n";
 # << usage statement and variable initialisation >>
 my %inputs = (); 
 $inputs{'force'}=0;
-GetOptions( \%inputs, 'fasta:s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'bed:s', 'seq:i', 'cmap:s', 'ref:s', 'n:i','j:i','optArgs:s', 'runSV', 'bnx=s'); 
+GetOptions( \%inputs, 'fasta:s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'bed:s', 'seq:i', 'cmap:s', 'ref:s', 'n:i','j:i','optArgs:s', 'runSV', 'bnx=s', 'verbose'); 
 
 my $hasbed = 0; 
 if ( (!exists $inputs{fasta} & !exists $inputs{bed}) | !exists $inputs{xmap} | !exists $inputs{qcmap} | !exists $inputs{rcmap} | !exists $inputs{errbin} | !exists $inputs{output} ) {
@@ -117,9 +118,9 @@ if (!-e "$scriptspath/calcFragileSites.pl" | !-e "$scriptspath/split_xmap_standa
 }
 if( !-e $ENV{"HOME"}."/tools/RefAligner" | !-e $ENV{"HOME"}."/scripts/HybridScaffold/scripts/calc_cmap_stats.pl" | !-e $ENV{"HOME"}."/scripts/optArguments_human.xml" | !-e $ENV{"HOME"}."/scripts/runSV.py") {
 	# die "ERROR: Pipeline tools and scripts not found. Please ensure ~/tools and ~/scripts are properly set up.\n"; 
-	die "abs_path('~/tools/RefAligner') not found: $!\n"; 
+	die "abs_path($ENV{'HOME'}/tools/RefAligner) not found: $!\n"; 
 }
-if( !exists $inputs{optArgs} ) { $inputs{optArgs} = abs_path($ENV{"HOME"}."/scripts/optArguments_human.xml"); }
+if( !exists $inputs{optArgs} ) { $inputs{optArgs} = abs_path($ENV{'HOME'}."/scripts/optArguments_human.xml"); }
 
 
 # check output folder
@@ -229,7 +230,12 @@ foreach my $xmap (@xmaps) {
 		# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n CPU cores to use]
 		# $cmd = "perl $scriptspath/gapFill.pl -x $xmap -q $qcmap -r $rcmap -e $inputs{errbin} -o $base"."_fragileSiteRepaired --bed $bed --maxlab $inputs{maxlab} --maxfill $inputs{maxfill} --wobble $inputs{wobble} --n $cpuCount";
 		# Usage: perl stitchFsites.pl --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output_folder> --bed <.bed fragile sites file> [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n <CPU cores to use>]
-		$cmd = "perl $scriptspath/stitchFsites.pl --xmap $xmap --qcmap $qcmap --rcmap $rcmap --errbin $inputs{errbin} --output $outdir --bed $bed --maxlab $inputs{maxlab} --maxfill $inputs{maxfill} --wobble $inputs{wobble} --n $cpuCount";
+		if( exists $inputs{verbose} ) { 
+			$cmd = "perl $scriptspath/stitchFsites.pl --xmap $xmap --qcmap $qcmap --rcmap $rcmap --errbin $inputs{errbin} --output $outdir --bed $bed --maxlab $inputs{maxlab} --maxfill $inputs{maxfill} --wobble $inputs{wobble} --n $cpuCount --verbose"; 
+		}
+		else {
+			$cmd = "perl $scriptspath/stitchFsites.pl --xmap $xmap --qcmap $qcmap --rcmap $rcmap --errbin $inputs{errbin} --output $outdir --bed $bed --maxlab $inputs{maxlab} --maxfill $inputs{maxfill} --wobble $inputs{wobble} --n $cpuCount"; 
+		}
 
 		print "\tRunning command: $cmd\n";
 		print "\n";
@@ -305,7 +311,7 @@ close LIST;
 
 #my $input = join(" -i ",@qcmaps);
 #$cmd = "cd $inputs{output}; ~/tools/RefAligner -i $input -merge -o $splitprefix"."_fragileSiteRepaired -minsites 0";
-$cmd = "cd $inputs{output}; ~/tools/RefAligner -if $mergeFile -merge -o $splitprefix"."_fragileSiteRepaired -minsites 0";
+$cmd = "cd $inputs{output}; $ENV{'HOME'}/tools/RefAligner -if $mergeFile -merge -o $splitprefix"."_fragileSiteRepaired -minsites 0";
 print "Running command: $cmd\n";
 print "\n";
 system($cmd);
@@ -416,11 +422,11 @@ print "\n\n===Step 6: Process original assembly CMAP and generate new merged CMA
 		copy( $oldMap, $newMap.".cmap" ) or print "WARNING: Unable to copy $oldMap to $newMap.cmap. Step 7 may fail\n"; 
 	}
 	else {
-		$cmd = "cd $inputs{output}; ~/tools/RefAligner -merge -i $inputs{cmap} -selectid ".join(" ",@diff)." -o $tempMap";
+		$cmd = "cd $inputs{output}; $ENV{'HOME'}/tools/RefAligner -merge -i $inputs{cmap} -selectid ".join(" ",@diff)." -o $tempMap";
 		print "\tRunning command: $cmd\n\n";
 		system($cmd);
 		print "\n";
-		$cmd = "cd $inputs{output}; ~/tools/RefAligner -merge -i $tempMap".".cmap -i $oldMap -o $newMap; rm -f $tempMap".".cmap";
+		$cmd = "cd $inputs{output}; $ENV{'HOME'}/tools/RefAligner -merge -i $tempMap".".cmap -i $oldMap -o $newMap; rm -f $tempMap".".cmap";
 		print "\tRunning command: $cmd\n\n";
 		system($cmd);
 		print "\n";
@@ -439,7 +445,7 @@ if (-e $finalmap && (exists $inputs{ref})) {
 	# my $newMap = "$inputs{output}"."/"."$splitprefix"."_fragileSiteRepaired_merged.cmap";
 	#usage: runCharacterizeFinal.py [-h] [-t REFALIGNER] [-r REFERENCEMAP] [-q QUERYMAP] [-x XMAP] [-p PIPELINEDIR] [-a OPTARGUMENTS] [-n NUMTHREADS] 
 	# $cmd = "cp runCharacterizeFinal.py ~/scripts/; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r $inputs{ref} -q $newMap -p ~/scripts/ -n $cpuCount";
-	$cmd = "cp $scriptspath/runCharacterizeFinal.py ~/scripts/; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r $inputs{ref} -q $finalmap -p ~/scripts/ -n $cpuCount";
+	$cmd = "cp $scriptspath/runCharacterizeFinal.py $ENV{'HOME'}/scripts/; python ~/scripts/runCharacterizeFinal.py -t $ENV{'HOME'}/tools/RefAligner -r $inputs{ref} -q $finalmap -p $ENV{'HOME'}/scripts/ -n $cpuCount";
 	print "\tRunning command: $cmd\n\n";
 	system($cmd);
 }
@@ -488,7 +494,13 @@ if (defined $inputs{bnx}) {
 	mkpath("$inputs{output}/alignmol") or die "ERROR: Cannot create output directory $inputs{output}/alignmol: $!\n";
 	my $alignmolDir = abs_path("$inputs{output}/alignmol");
 	# $ cd /home/palak; /home/palak/tools/RefAligner.mic -ref /home/palak/data/HuRef_fragileSiteRepair_IrysView/HuRef_105x_hg19/output/contigs/exp_refineFinal1/EXP_REFINEFINAL1.cmap -o /home/palak/data/HuRef_fragileSiteRepair_IrysView/HuRef_105x_hg19/output/contigs/exp_refineFinal1/alignmol/EXP_REFINEFINAL1_1 -i /home/palak/data/HuRef_fragileSiteRepair_IrysView/HuRef_105x_hg19/output/all_1_of_30.bnx -f -stdout -stderr -maxthreads 240 -usecolor 1 -FP 1.5 -FN 0.15 -sd 0. -sf 0.2 -sr 0.03 -res 3.3 -output-veto-filter intervals.txt$ -T 1e-9 -usecolor 1 -S -1000 -biaswt 0 -res 3.3 -resSD 0.75 -outlier 0.0001 -extend 1 -BestRef 1 -maptype 1 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -maxmem 7
-	$cmd = "cd $alignmolDir; ~/tools/RefAligner -ref $finalmap -o $splitprefix"."_fragileSiteRepaired_merged_alignmol -i $inputs{bnx} -maxthreads $cpuCount -maxmem $mem -usecolor 1 -FP 1.5 -FN 0.15 -sd 0. -sf 0.2 -sr 0.03 -res 3.3 -output-veto-filter intervals.txt\$ -T 1e-9 -usecolor 1 -S -1000 -biaswt 0 -res 3.3 -resSD 0.75 -outlier 0.0001 -extend 1 -BestRef 1 -maptype 1 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -stdout -stderr";
+	$cmd = "cd $alignmolDir; $ENV{'HOME'}/tools/RefAligner -ref $finalmap -o $splitprefix"."_fragileSiteRepaired_merged_alignmol -i $inputs{bnx} -maxthreads $cpuCount -maxmem $mem -usecolor 1 -FP 1.5 -FN 0.15 -sd 0. -sf 0.2 -sr 0.03 -res 3.3 -output-veto-filter intervals.txt\$ -T 1e-9 -usecolor 1 -S -1000 -biaswt 0 -res 3.3 -resSD 0.75 -outlier 0.0001 -extend 1 -BestRef 1 -maptype 1 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -stdout -stderr";
+	my $opts = getXmapOpts($inputs{xmap}); 
+	my $veto = q/-output-veto-filter '(_intervals.txt)$'/;
+	$opts = "$opts -maxthreads $cpuCount -maxmem $mem -stdout -stderr "; 
+	$opts =~ s/-BestRef\s\S+(\s|$)/ -BestRef 1 /g;	#make sure to do BestRef alignment 
+	$opts =~ s/-maptype\s\S+(\s|$)/ -maptype 0 /g;	#make sure RefAligner knows input is bnx
+	$cmd = "cd $alignmolDir; $ENV{'HOME'}/tools/RefAligner -ref $finalmap -o $splitprefix"."_fragileSiteRepaired_merged_alignmol -i $inputs{bnx} $veto $opts ";
 	print "\tRunning command: $cmd\n\n";
 	system($cmd);
 	sleep(5);

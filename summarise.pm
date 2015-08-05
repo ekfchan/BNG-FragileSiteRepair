@@ -38,10 +38,11 @@ sub getCmapIds {
 sub calcCmapStats {
 	my $cmapfile = shift;
 	# usage: calc_cmap_stats.pl <CMAP_File>
-	my $dir = glob("~/scripts/HybridScaffold/scripts");
-	my $script = "calc_cmap_stats.pl";
-	if (-e "$dir/$script") {
-		my $cmd = "perl $dir/$script $cmapfile";
+	# my $dir = glob("~/scripts/HybridScaffold/scripts");
+	# my $script = "calc_cmap_stats.pl";
+	my $script = glob("$ENV{'HOME'}/scripts/HybridScaffold/scripts/calc_cmap_stats.pl");
+	if (-e $script) {
+		my $cmd = "perl $script $cmapfile";
 		print "\n---------------\n"; 
 		system($cmd);
 		# if ($? == -1) { print "failed to execute command: $!\n\t$cmd"; }
