@@ -406,7 +406,7 @@ elsif( $didmerge eq 0 ) {
 	copy($inputs{qcmap} , $finalmap) or die "Copy failed: $!";
 	# Clean up
 	print "Removing $inputs{output}/".$prefix."_tmp*"; 
-	# unlink glob($inputs{output}."/".$prefix."_tmp*");
+	unlink glob($inputs{output}."/".$prefix."_tmp*");
 
 	# Summary for this reference contig
 	if ( exists $inputs{verbose} ) { 
