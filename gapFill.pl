@@ -420,11 +420,8 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 			else {
 				print "\tAlignment filter: FAIL\n";
 				#if ( (($firstOrientation eq "+" && $secondOrientation eq "+") && ($firstQryEndPosSite eq $firstNumSites) && ($secondQryStartPosSite eq 1)) || (($firstOrientation eq "+" && $secondOrientation eq "-") && ($firstQryEndPosSite eq $firstNumSites) && ($secondQryStartPosSite eq $secondNumSites)) || (($firstOrientation eq "-" && $secondOrientation eq "+") && ($firstQryEndPosSite eq 1) && ($secondQryStartPosSite eq 1)) || (($firstOrientation eq "-" && $secondOrientation eq "-") && ($firstQryEndPosSite eq 1) && ($secondQryStartPosSite eq $secondNumSites)) ) {
-				print "\tFirst contig: $id1 Orientation: $firstOrientation Start: $firstQryStartPos $firstQryStartPosSite End: $firstQryEndPos $firstQryEndPosSite NumSites: $firstNumSites\n";
-				print "\tSecond contig: $id2 Orientation: $secondOrientation Start: $secondQryStartPos $secondQryStartPosSite End: $secondQryEndPos $secondQryEndPosSite NumSites: $secondNumSites\n";
-			
-			
-			
+				print "\t\tFirst contig: $id1 Orientation: $firstOrientation Start: $firstQryStartPos SiteId: $firstQryStartPosSite End: $firstQryEndPos SiteId: $firstQryEndPosSite NumSites: $firstNumSites\n";
+				print "\t\tSecond contig: $id2 Orientation: $secondOrientation Start: $secondQryStartPos SiteId: $secondQryStartPosSite End: $secondQryEndPos SiteId: $secondQryEndPosSite NumSites: $secondNumSites\n";
 			}
 		}
 		else {
