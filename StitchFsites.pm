@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package stitchFsites;
+package StitchFsites;
 
 use strict;
 use Exporter;
@@ -11,13 +11,12 @@ BEGIN {
 	our $VERSION     = 1.00;
 	our @ISA         = qw(Exporter);
 	our @EXPORT      = ();
-	our @EXPORT_OK   = qw(mergeContigs doalignment appendStitched getXmapOpts);
+	our @EXPORT_OK   = qw(MergeContigs DoBestAlignment AppendStitched GetXmapOpts);
 }
 
-sub mergeContigs {
-	# usage: mergeContigs(\%q_cmap{$firstQryContigID}, \%q_cmap{$secondQryContigID}, $firstOrientation, $secondOrientation, abs($secondRefStartPos - $firstRefEndPos))
+sub MergeContigs {
+	# usage: MergeContigs(\%q_cmap{$firstQryContigID}, \%q_cmap{$secondQryContigID}, $firstOrientation, $secondOrientation, abs($secondRefStartPos - $firstRefEndPos))
 	my ($firstContigRef, $secondContigRef, $firstOrientation, $secondOrientation, $positionOffset, $verbose) = @_; #$firstCOntigRef and $secondContigRef are referencess to hashes with keys: ContigLength, NumSites, and Positions of each label site 
-print $verbose; 
 	if ( $verbose ) { print "\t\tOffset: $positionOffset\n"; }
 	
 	my $firstContigSites = $firstContigRef->{'NumSites'};	# number of sites in 1st contig
@@ -98,7 +97,7 @@ print $verbose;
 		print "\t\tMerged Contig: $mergedSites sites, $mergedLength bp\n"; 
 		
 		my $cursite=1; 
-		for ( my $i=($#firstPositions-1); $i >=0 ; $i-- ) { #exclude dude label where SiteID > NumSites
+		for ( my $i=($#firstPositions-1); $i >=0 ; $i-- ) { #include dud as 3' trailing of first contig, but exclude that last label
 			my $pos = $firstPositions[$i];  
 			my $newpos = $firstContigLength - $pos;
 			$newQCmap{$newpos}{'LabelChannel'} = $firstContigRef->{$pos}{'LabelChannel'}; 
@@ -122,7 +121,7 @@ print $verbose;
 		print "\t\tMerged Contig: $mergedSites sites, $mergedLength bp\n"; 
 		
 		my $cursite=1; 
-		for ( my $i=($#firstPositions-1); $i >=0 ; $i-- ) { #exclude dude label where SiteID > NumSites
+		for ( my $i=($#firstPositions-1); $i >=0 ; $i-- ) { #include dud as trailing head of first contig, but exclude that last label
 			my $pos = $firstPositions[$i]; 
 			my $newpos = $firstContigLength - $pos; 
 			$newQCmap{$newpos}{'LabelChannel'} = $firstContigRef->{$pos}{'LabelChannel'}; 
@@ -133,7 +132,7 @@ print $verbose;
 		for ( my $i=($#secondPositions-1); $i >= 0; $i-- ) { #excludes dude label where SiteID > NumSites
 			if( $positionOffset==0 && $i==($#secondPositions-1) ) { next; }	#if contig pair start/end at same label, exclude start (i.e. reversed end) label of second contig
 			my $pos = $secondPositions[$i]; 
-			my $newpos = ($firstContigEnd - $firstPositions[0]) + $positionOffset + ($secondContigEnd-$pos); 
+			my $newpos = ($firstContigLength - $firstPositions[0]) + $positionOffset + ($secondContigEnd-$pos); 
 			$newQCmap{$newpos}{'LabelChannel'} = $secondContigRef->{$pos}{'LabelChannel'}; 
 			$newQCmap{$newpos}{'TheRest'} = $secondContigRef->{$pos}{'TheRest'}; 
 			$newQCmap{$newpos}{'SiteID'} = $cursite++;
@@ -150,50 +149,31 @@ print $verbose;
 }
 
 
-sub doalignment {
+sub DoBestAlignment {
 
 	my ($xmap, $rcmap, $qcmap, $out, $errbin, $mem, $cpuCount, $verbose) = @_; 
 	if( $verbose ) {
-		print "XMAP: $xmap\n";
-		print "Reference CMAP: $rcmap\n";
-		print "Query CMAP: $qcmap\n";
-		print "OUTPUT prefix: $out\n";
-		print "ERRBIN: $errbin\n";
+		print "\tXMAP: $xmap\n";
+		print "\tReference CMAP: $rcmap\n";
+		print "\tQuery CMAP: $qcmap\n";
+		print "\tOUTPUT prefix: $out\n";
+		print "\tERRBIN: $errbin\n";
 	}
 
 	# get RefAligner options
-	my $opts = getXmapOpts($xmap); 
-	# my $opts; 
-	# open (XMAP, "<", $xmap) or die $!;
-	# while (my $line = <XMAP>) {
-	# 	chomp $line;
-	# 	if ($line =~ m=tools/RefAligner=) { 
-	# 		$opts = $line;
-	# 		last;
-	# 	} else { next; }
-	# }
-	# close XMAP; 
-	# $opts =~ s/^.+RefAligner\s//;
-	# $opts =~ s/-i\s[^\s]+\s//g; 
-	# $opts =~ s/-o\s[^\s]+\s//g; 
-	# $opts =~ s/-ref\s[^\s]+\s//g; 
-	# $opts =~ s/-maxthreads\s[^\s]+\s//g; 
-	# $opts =~ s/-maxmem\s[^\s]+\s//g; 
-	# $opts =~ s/-output-veto-filter\s[^\s]+\s//g; 
-	# $opts =~ s/-output-filter\s[^\s]+\s//g; 
-	# $opts =~ s/-readparameters\s[^\s]+\s//g; 
-	# $opts =~ s/-stderr\s+//g; 
-	# $opts =~ s/-stdout\s+//g; 
+	my $opts = GetXmapOpts($xmap); 
+	$opts =~ s/-BestRef\s\S+(\s|$)//g;	#make sure to do BestRef alignment 
+	$opts = $opts." -BestRef 1 ";	#make sure to do BestRef alignment 
+	$opts =~ s/-maptype\s\S+(\s|$)//g;	#let RefAligner decide what map type
 
 	# RefAligner filters 
-	my $ofilter = q/-output-filter '(.[cx]map)$'/;
-	# my $ofilter = q/-output-filter '(q.cmap)$'/;
-	my $veto = q/-output-veto-filter '(_intervals.txt|.err|.maprate|[a-z|A-Z].map)$'/;
+	# my $ofilter = q/-output-filter '(.[cx]map)$'/;
+	my $ofilter = " "; 
 
 	# RefAligner command
-	my $cmd = "~/tools/RefAligner -ref ".$rcmap." -i ".$qcmap." -o ".$out."  -stdout ".$ofilter." -readparameters ".$errbin." -BestRef 1 -f "; 
-	$cmd = $cmd." -maxmem ".$mem."  -maxthreads ".$cpuCount; 
-	$cmd = $cmd." ".$opts; 
+	my $cmd = "~/tools/RefAligner -ref $rcmap -i $qcmap -o $out ".$ofilter." -readparameters $errbin -f "; 
+	$cmd = "$cmd -maxmem $mem -maxthreads $cpuCount"; 
+	$cmd = "$cmd $opts"; 
 
 	if( $verbose ) { print "\nRunning command: \n\n $cmd \n\n"; }
 	system($cmd); 
@@ -212,7 +192,7 @@ sub doalignment {
 	}
 }
 
-sub printstitched {
+sub Printstitched {
 	# example usage: printstitched($outbed, $RefContigID, int($firstRefEndPos-1), int($secondRefStartPos+1), $fsiteFound);
 	my ($outbed, $RefContigID, $leftPos, $rightPos, $fsiteline) = @_; 
 	if (!-e $outbed) { 
@@ -230,8 +210,8 @@ sub printstitched {
 	close OUT; 
 }
 
-sub appendStitched {
-	# example usage: appendStitched($outbed, $RefContigID, int($firstRefEndPos-1), int($secondRefStartPos+1), $fsiteFound); 
+sub AppendStitched {
+	# example usage: AppendStitched($outbed, $RefContigID, int($firstRefEndPos-1), int($secondRefStartPos+1), $fsiteFound); 
 	my ($outbed, $RefContigID, $leftPos, $rightPos, $fsiteline) = @_; 
 
 	open (OUT, ">>", $outbed) or die "ERROR: Cannot open $outbed for writing! $!\n";
@@ -240,8 +220,8 @@ sub appendStitched {
 	close OUT; 
 }
 
-sub getXmapOpts {
-	#ussage: getXmapOpts(xmap_file)
+sub GetXmapOpts {
+	#ussage: GetXmapOpts(xmap_file)
 	#returns:  string of options to RefAligner, with dataset specific opts stripped
 	my $xmap = shift; 
 

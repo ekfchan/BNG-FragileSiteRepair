@@ -112,7 +112,7 @@ while( $numcmaps != scalar(@numfiles)-1 ) {
 	my $left = ($numcmaps) - (scalar(@numfiles)-1);
 	print "\tWaiting...$left still to go...\n";
 }
-print "\nFinished. There are ",scalar(@numfiles)-1," cmaps in $qcmapdir\n"; 
+print "\nFinished.\nThere are ",scalar(@numfiles)-1," cmaps in $qcmapdir\n"; 
 print "Waiting 30s for files to propogate...\n";
 sleep (29);
 

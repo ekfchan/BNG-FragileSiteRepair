@@ -15,8 +15,8 @@ use Sys::MemInfo qw(totalmem);
 use List::Util qw( max );	#qw( min max )
 use FindBin;	#locate this script 
 use lib "$FindBin::Bin";
-use stitchFsites qw(mergeContigs doalignment appendStitched getXmapOpts);
-use summarise qw(getCmapIds calcCmapStats getFsiteStats); 
+use StitchFsites qw(MergeContigs DoBestAlignment AppendStitched GetXmapOpts);
+use Summarise qw(GetCmapIds CalcCmapStats GetFsiteStats); 
 
 sub makeNewID; 
 sub unique;
@@ -270,7 +270,10 @@ MAIN: for (my $i=0; $i < scalar(@xmap); $i++) {
 					my $labelsDistance = $secondRefStartPosSite - $firstRefEndPosSite - 1;	#-1 means start and stop at same label
 					print "\tLabels: $labelsDistance\n";
 
-					if ($labelsDistance > -1 && $labelsDistance <= $maxlab) {
+					if ( $labelsDistance < (-1) ) {
+						print "\t\tLabel filter: FAIL (contigs overlap)\n"; 
+					}
+					elsif ($labelsDistance <= $maxlab) {
 						print "\t\tLabel filter: PASS\n";				
 
 						# Only stitch contigs if they overlap with fsite. 
@@ -300,7 +303,7 @@ MAIN: for (my $i=0; $i < scalar(@xmap); $i++) {
 								print "\t\tFirst alignment: $id1 Orientation: $firstOrientation Query Contig:: $firstQryContigID align from $firstQryStartPos (site # $q_cmap{$firstQryContigID}{$firstQryStartPos}{'SiteID'}) to $firstQryEndPos (site # $q_cmap{$firstQryContigID}{$firstQryEndPos}{'SiteID'}) of $q_cmap{$firstQryContigID}{'NumSites'} total sites\n";
 								print "\t\tSecond alignment: $id2 Orientation: $secondOrientation Query Contig:: $secondQryContigID align from $secondQryStartPos (site # $q_cmap{$secondQryContigID}{$secondQryStartPos}{'SiteID'}) to $secondQryEndPos (site # $q_cmap{$secondQryContigID}{$secondQryEndPos}{'SiteID'}) of $q_cmap{$secondQryContigID}{'NumSites'} total sites\n";
 							}
-							my $newCMapRef = mergeContigs(\%{$q_cmap{$firstQryContigID}}, \%{$q_cmap{$secondQryContigID}}, $firstOrientation, $secondOrientation, abs($secondRefStartPos - $firstRefEndPos), (exists $inputs{verbose})); 
+							my $newCMapRef = MergeContigs(\%{$q_cmap{$firstQryContigID}}, \%{$q_cmap{$secondQryContigID}}, $firstOrientation, $secondOrientation, abs($secondRefStartPos - $firstRefEndPos), (exists $inputs{verbose})); 
 							
 							# add newly merged map to %q_cmap
 							foreach my $key (keys $newCMapRef) { 
@@ -319,8 +322,8 @@ MAIN: for (my $i=0; $i < scalar(@xmap); $i++) {
 
 							# print stitched position 
 							print "\n\tAppending stitched fragile site to $outbed ...\n"; 
-							appendStitched($outbed, $RefContigID, int($firstRefEndPos-1), int($secondRefStartPos+1), $fsiteFound); 
-							# printstitched($outbed, $RefContigID, int($firstRefEndPos-1), int($secondRefStartPos+1), $fsiteFound); 
+							AppendStitched($outbed, $RefContigID, int($firstRefEndPos-1), int($secondRefStartPos+1), $fsiteFound); 
+							# Printstitched($outbed, $RefContigID, int($firstRefEndPos-1), int($secondRefStartPos+1), $fsiteFound); 
 						}
 					} else { print "\t\tLabel filter: FAIL\n"; }
 				}
@@ -366,11 +369,11 @@ if( $didmerge eq 1 ) {
 
 	# << Align new _q.cmap with merged contigs back to _r.cmap >>
 	print "\nAligning merged query maps to $inputs{rcmap}...\n"; 
-	# Usage: doalignment($xmap, $rcmap, $qcmap, $out, $errbin, $mem, $cpuCount, $verbose)  
-	doalignment($inputs{xmap}, $inputs{rcmap}, $tmpprefix.".cmap", $tmpprefix, $inputs{errbin}, $mem, $cpuCount, (exists $inputs{verbose}));
+	# Usage: DoBestAlignment($xmap, $rcmap, $qcmap, $out, $errbin, $mem, $cpuCount, $verbose)  
+	DoBestAlignment($inputs{xmap}, $inputs{rcmap}, $tmpprefix.".cmap", $tmpprefix, $inputs{errbin}, $mem, $cpuCount, (exists $inputs{verbose}));
 	if ( exists $inputs{verbose} ) { 
 		print "\n--- Santity Check ---\n"; 
-		my @tmpids = getCmapIds($tmpprefix."_q.cmap"); 
+		my @tmpids = GetCmapIds($tmpprefix."_q.cmap"); 
 		print "After alignment, ", $tmpprefix."_q.cmap", " has ", scalar(@tmpids), " maps and they are: \n"; 
 		print join( "\n", @tmpids ); 
 		print "\n"; 
@@ -402,20 +405,21 @@ elsif( $didmerge eq 0 ) {
 	if( exists $inputs{verbose} ) { print "\t...copying from $inputs{qcmap}\n"; }
 	copy($inputs{qcmap} , $finalmap) or die "Copy failed: $!";
 	# Clean up
-	unlink glob $inputs{output}."/".$prefix."_tmp*";
+	print "Removing $inputs{output}/".$prefix."_tmp*"; 
+	# unlink glob($inputs{output}."/".$prefix."_tmp*");
 
 	# Summary for this reference contig
 	if ( exists $inputs{verbose} ) { 
 		print "\n--- Santity Check ---\n"; 
-		my @tmpids = getCmapIds($finalmap); 
+		my @tmpids = GetCmapIds($finalmap); 
 		print "Final map $finalmap has ", scalar(@tmpids), " maps and they are: \n"; 
 		print join( "\n", @tmpids ); 
 		print "\n"; 
 	}
 	print "\n\n*** CMap Summary: $finalmap ***\n"; 
-	calcCmapStats($finalmap); 
+	CalcCmapStats($finalmap); 
 	print "\n\n*** Stitched Sites Summary: $outbed ***\n"; 
-	getFsiteStats($outbed); 
+	GetFsiteStats($outbed); 
 
 	# Exit 
 	print "\n\n"; 

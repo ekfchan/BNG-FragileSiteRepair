@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package summarise;
+package Summarise;
 
 use strict;
 use Exporter;
@@ -11,10 +11,10 @@ BEGIN {
 	our $VERSION     = 1.00;
 	our @ISA         = qw(Exporter);
 	our @EXPORT      = ();
-	our @EXPORT_OK   = qw(getCmapIds calcCmapStats getFsiteStats);
+	our @EXPORT_OK   = qw(GetCmapIds CalcCmapStats GetFsiteStats);
 }
 
-sub getCmapIds {
+sub GetCmapIds {
 	my $cmapfile = shift; 
 	my @cmapIds; 
 	open (CMAP, "<", $cmapfile) or die "ERROR: Could not open $cmapfile: $!\n";
@@ -35,7 +35,7 @@ sub getCmapIds {
 }
 
 
-sub calcCmapStats {
+sub CalcCmapStats {
 	my $cmapfile = shift;
 	# usage: calc_cmap_stats.pl <CMAP_File>
 	# my $dir = glob("~/scripts/HybridScaffold/scripts");
@@ -58,7 +58,7 @@ sub calcCmapStats {
 }
 
 
-sub getFsiteStats {
+sub GetFsiteStats {
 	my $bedfile = shift @_; 
 
 	my %mapCount;
