@@ -118,6 +118,7 @@ print "Maximum basepairs to fill between maps: $inputs{maxfill}\n";
 print "Maximum fragile site wobble: $inputs{wobble}\n";
 print "\n";
 
+if (exists $inputs{runSV} && exists $inputs{ref}) { print "SV module enabled\n\n"; }
 
 # Make sure dependency scripts exist
 my $scriptspath = abs_path(dirname($0));
@@ -492,6 +493,7 @@ if (defined $inputs{bnx} && exists $inputs{bnx} && -e $finalmap && exists $input
 		copy("$newfinalmap","$inputs{output}") or print "Copy of final merged fragileSiteRepaired CMAP $newfinalmap failed: $!\n";
 		$newfinalmap = abs_path($inputs{output}."/".$pre.".cmap");
 		copy("$newBED","$inputs{output}") or print "Copy of final merged fragileSiteRepaired CMAP $newBED failed: $!\n";
+		$newBED = "$inputs{output}/".basename($scoredBED, ".bed")."_final.bed";
 	}
 	else {
 		print "Skipping Step 9 cutting CMAP based on scores. Scored BED and/or stats file not provided or does not exist\n";
