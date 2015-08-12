@@ -118,7 +118,7 @@ if (!-e "$scriptspath/calcFragileSites.pl" | !-e "$scriptspath/split_xmap_standa
 }
 if( !-e $ENV{"HOME"}."/tools/RefAligner" | !-e $ENV{"HOME"}."/scripts/HybridScaffold/scripts/calc_cmap_stats.pl" | !-e $ENV{"HOME"}."/scripts/optArguments_human.xml" | !-e $ENV{"HOME"}."/scripts/runSV.py") {
 	# die "ERROR: Pipeline tools and scripts not found. Please ensure ~/tools and ~/scripts are properly set up.\n"; 
-	die "abs_path($ENV{'HOME'}/tools/RefAligner) not found: $!\n"; 
+	die "$ENV{'HOME'}/tools/RefAligner not found: $!\n"; 
 }
 if( !exists $inputs{optArgs} ) { $inputs{optArgs} = abs_path($ENV{'HOME'}."/scripts/optArguments_human.xml"); }
 
