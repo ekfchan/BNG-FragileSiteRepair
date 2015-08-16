@@ -33,6 +33,7 @@ my $bp_t5 = 50; #maximum distance between nicks on same strands (moving in the s
 my $bp_t6 = 500; #maximum distance between nicks of more than 1 strand type to count as TypeVI
 
 my @enzymes = ("GCTCTTC"); #BspQI
+#my @enzymes = ("CACGAG"); #BssSI
 #my @enzymes = ("GCTCTTC","CACGAG"); #BspQI and BssSI dual-nick
 
 #my $enzyme1 = "GCTCTTC"; #BspQI... motif is actually "GCTCTTCN" with nicking occuring after the "N"

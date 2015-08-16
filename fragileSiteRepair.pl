@@ -82,6 +82,11 @@ else {
 	if( !exists $inputs{maxfill} ) { $inputs{maxfill} = 30000; }
 	if( !exists $inputs{wobble} ) { $inputs{wobble} = 30000; }
 	if( !exists $inputs{maxlab} ) { $inputs{maxlab} = 1; }
+		else {
+			if ($inputs{maxlab} > 1) {
+				die "ERROR: Maximum recommended --maxlab = 1\n";
+			}
+		}
 	
 	if( exists $inputs{seq} ) { 
 		$getSeq = 1; 
@@ -493,7 +498,7 @@ if (defined $inputs{bnx} && exists $inputs{bnx} && -e $finalmap && exists $input
 		copy("$newfinalmap","$inputs{output}") or print "Copy of final merged fragileSiteRepaired CMAP $newfinalmap failed: $!\n";
 		$newfinalmap = abs_path($inputs{output}."/".$pre.".cmap");
 		copy("$newBED","$inputs{output}") or print "Copy of final merged fragileSiteRepaired CMAP $newBED failed: $!\n";
-		$newBED = "$inputs{output}/".basename($scoredBED, ".bed")."_final.bed";
+		#$newBED = "$inputs{output}/".basename($scoredBED, ".bed")."_final.bed";
 	}
 	else {
 		print "Skipping Step 9 cutting CMAP based on scores. Scored BED and/or stats file not provided or does not exist\n";
@@ -505,8 +510,106 @@ else {
 }
 
 
-# Step 10: Calculate stats for merged fragileSiteRepaired BED and CMAP
-print "=== Step 10: Calculate stats for final merged fragileSiteRepaired CMAP ===\n";
+# Step 10: run CharacterizeFinal on new final merged CMAP if needed
+if (-e $newfinalmap) {
+	# move/rename old alignref_final folder
+	$cmd = "mv $inputs{output}/alignref_final $inputs{output}/alignref";
+	system($cmd);
+	
+	print "\n\n===Step 10: Align final fragileSiteRepaired merged CMAP to reference and get stats ===\n\n";
+	if (-e $newfinalmap && (exists $inputs{ref})) {
+		#copy("$inputs{ref}","$inputs{output}") or print "WARNING: Copy of input reference $inputs{ref} failed: $!\n"; 
+		$cmd = "cp $scriptspath/runCharacterizeFinal.py ~/scripts/; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r $inputs{ref} -q $newfinalmap -p ~/scripts/ -n $cpuCount";
+		print "\tRunning command: $cmd\n\n";
+		system($cmd);
+		
+		$alignreffinalXmap = "$inputs{output}/alignref_final/$splitprefix"."_fragileSiteRepaired_merged_final.xmap";
+		$alignreffinalQcmap = "$inputs{output}/alignref_final/$splitprefix"."_fragileSiteRepaired_merged_final_q.cmap";
+		$alignreffinalRcmap = "$inputs{output}/alignref_final/$splitprefix"."_fragileSiteRepaired_merged_final_r.cmap";
+	}
+	else {
+		print "Skipping Step 10 final characterizeFinal. Final merged fragileSiteRepaired CMAP or reference CMAP not found\n";
+		print "\n";
+	}
+}
+else {
+	print "Skipping Step 10 final characterizeFinal. Final merged fragileSiteRepaired CMAP not found and/or input BNX not provided\n";
+}
+
+
+# Step 11: run alignmol on new final merged CMAP if needed
+if (-e $newfinalmap) {
+	$alignmolXmap = "";
+	mkpath("$inputs{output}/alignmol_final") or warn "WARNING: Cannot create output directory $inputs{output}/alignmol_final : $!\nNext steps may fail...\n"; 
+	print "\n\n===Step 11: Run final single molecule alignments against final fragileSiteRepaired merged cmap ===\n\n";
+	#$alignmolXmap="";
+	if (defined $inputs{bnx} && exists $inputs{bnx}) {
+		print "Running alignment of $inputs{bnx} to $newfinalmap\n\n";
+		my $alignmolDir = abs_path("$inputs{output}/alignmol_final");
+		$cmd = "cd $alignmolDir; ~/tools/RefAligner -f -ref $newfinalmap -o $splitprefix"."_fragileSiteRepaired_merged_final_alignmol -i $inputs{bnx} -maxthreads $cpuCount -maxmem ".($mem)." -usecolor 1 -FP 1.5 -FN 0.15 -sd 0. -sf 0.2 -sr 0.03 -res 3.3 -output-veto-filter intervals.txt\$ -T 1e-9 -usecolor 1 -S -1000 -biaswt 0 -res 3.3 -resSD 0.75 -outlier 0.0001 -extend 1 -BestRef 1 -maptype 1 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -stdout -stderr";
+		print "\tRunning command: $cmd\n\n";
+		system($cmd);
+		sleep(5);
+	
+		#split xmap into _contig maps
+		$alignmolXmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_final_alignmol.xmap";
+		my $alignmolQmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_final_alignmol_q.cmap";
+		my $alignmolRmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_final_alignmol_r.cmap";
+		my $alignmolPrefix = "$splitprefix"."_fragileSiteRepaired_merged_final_alignmol_contig";
+		#mkpath("$alignmolDir/contigs") or die "ERROR: Cannot create output directory $inputs{output}/alignmol/contigs: $!\n";
+		# Usage: perl split_xmap_standalone.pl [xmap] [_q.cmap] [_r.cmap] [_contig prefix] [output folder]
+		$cmd = "perl $scriptspath/split_xmap_standalone.pl $alignmolXmap $alignmolQmap $alignmolRmap $alignmolPrefix $alignmolDir/contigs";
+		print "\n\tRunning command: $cmd\n\n";
+		system($cmd);
+		print "\n";
+	}
+	else {
+		print "Skipping Step 11 Single molecule alignments. Input BNX not provided or does not exist\n";
+		print "\n";
+	}
+}
+else {
+	print "Skipping Step 11 final single molecule alignments. Input BNX and/or Final merged fragileSiteRepaired CMAP not found\n";
+}
+
+# Step 12: re-score final BED file if needed
+if (-e $newfinalmap && -e $newBED) {
+	print "\n\n===Step 12: Re-score final stitchPositions BED based on final single molecule alignments ===\n\n";
+
+	my $scoredBED = basename($newBED,".bed");
+	my $scoredSTATS = $scoredBED;
+	$scoredBED = $scoredBED."_scored.bed";
+	$scoredSTATS = $scoredSTATS."_scoreStats.csv";
+
+	if (defined $inputs{bnx} && exists $inputs{bnx} && -e $newfinalmap && exists $inputs{ref}) {
+		print "Scoring final BED file $newBED based on molecule alignments in $alignmolXmap\n\n";
+		#mkpath("$inputs{output}/scoreBED") or warn "WARNING: Cannot create output directory $inputs{output}/scoreBED: $!\nNext steps may fail...\n";
+		$scoredBED = $inputs{output}."/scoreBED/$scoredBED";
+		my $oldBED = $newBED;
+		$newBED = "$inputs{output}/".basename($scoredBED);
+		
+		$cmd = "perl $scriptspath/scoreStitchPositionsBED_v3.pl --bed $oldBED --xmap $alignreffinalXmap --qcmap $alignreffinalQcmap --rcmap $alignreffinalRcmap --alignmol $alignmolXmap --n $cpuCount --output $inputs{output}/scoreBED/ > $inputs{output}/scoreBED/".basename($newBED,".bed")."_log.txt 2>&1";
+		print "\n\tRunning command: $cmd\n\n";
+		system($cmd);
+		print "\n"; 
+		$scoredSTATS = $inputs{output}."/scoreBED/$scoredSTATS";
+		#$scoredBED = $inputs{output}."/scoreBED/$scoredBED";
+		
+		copy("$scoredBED","$inputs{output}") or print "WARNING: Copy of re-scored BED $scoredBED failed: $!\n"; 	
+		
+	}
+	else {
+		print "Skipping Step 12 BED scoring. Input BNX, reference, or final fragileSiteRepaired merged CMAP not provided or does not exist\n";
+		print "\n";
+	}
+}
+else {
+	print "Skipping Step 12. Final merged fragileSiteRepaired CMAP and/or final BED not found\n";
+}
+
+
+# Step 13: Calculate stats for merged fragileSiteRepaired BED and CMAP
+print "=== Step 13: Calculate stats for final merged fragileSiteRepaired CMAP ===\n";
 print "\n"; 
 
 #generate FASTA of stitchPositions sequences
@@ -606,70 +709,12 @@ if (-e "$dir/$script") {
 	
 }
 else {
-	print "Skipping Step 10: perl script calc_cmap_stats.pl not found at $dir/$script\n"; }
+	print "Skipping Step 13: perl script calc_cmap_stats.pl not found at $dir/$script\n"; }
 print "\n";
 
 
-# Step 11: run CharacterizeFinal on new final merged CMAP if needed
-if (-e $newfinalmap) {
-	# move/rename old alignref_final folder
-	$cmd = "mv $inputs{output}/alignref_final $inputs{output}/alignref";
-	system($cmd);
-	
-	print "\n\n===Step 11: Align final fragileSiteRepaired merged CMAP to reference and get stats ===\n\n";
-	if (-e $newfinalmap && (exists $inputs{ref})) {
-		#copy("$inputs{ref}","$inputs{output}") or print "WARNING: Copy of input reference $inputs{ref} failed: $!\n"; 
-		$cmd = "cp $scriptspath/runCharacterizeFinal.py ~/scripts/; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r $inputs{ref} -q $newfinalmap -p ~/scripts/ -n $cpuCount";
-		print "\tRunning command: $cmd\n\n";
-		system($cmd);
-	}
-	else {
-		print "Skipping Step 11. Original assembly CMAP or reference CMAP not provided\n";
-		print "\n";
-	}
-}
-else {
-	print "Skipping Step 11. Final merged fragileSiteRepaired CMAP not found\n";
-}
-
-
-# Step 12: run alignmol on new final merged CMAP if needed
-if (-e $newfinalmap) {
-	mkpath("$inputs{output}/alignmol_final") or warn "WARNING: Cannot create output directory $inputs{output}/alignmol: $!\nNext steps may fail...\n"; 
-	print "\n\n===Step 12: Run single molecule alignments against fragileSiteRepaired merged cmap ===\n\n";
-	my $alignmolXmap="";
-	if (defined $inputs{bnx} && exists $inputs{bnx}) {
-		print "Running alignment of $inputs{bnx} to $newfinalmap\n\n";
-		my $alignmolDir = abs_path("$inputs{output}/alignmol_final");
-		$cmd = "cd $alignmolDir; ~/tools/RefAligner -f -ref $newfinalmap -o $splitprefix"."_fragileSiteRepaired_merged_final_alignmol -i $inputs{bnx} -maxthreads $cpuCount -maxmem ".($mem)." -usecolor 1 -FP 1.5 -FN 0.15 -sd 0. -sf 0.2 -sr 0.03 -res 3.3 -output-veto-filter intervals.txt\$ -T 1e-9 -usecolor 1 -S -1000 -biaswt 0 -res 3.3 -resSD 0.75 -outlier 0.0001 -extend 1 -BestRef 1 -maptype 1 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -stdout -stderr";
-		print "\tRunning command: $cmd\n\n";
-		system($cmd);
-		sleep(5);
-	
-		#split xmap into _contig maps
-		$alignmolXmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_final_alignmol.xmap";
-		my $alignmolQmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_final_alignmol_q.cmap";
-		my $alignmolRmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_final_alignmol_r.cmap";
-		my $alignmolPrefix = "$splitprefix"."_fragileSiteRepaired_merged_final_alignmol_contig";
-		#mkpath("$alignmolDir/contigs") or die "ERROR: Cannot create output directory $inputs{output}/alignmol/contigs: $!\n";
-		# Usage: perl split_xmap_standalone.pl [xmap] [_q.cmap] [_r.cmap] [_contig prefix] [output folder]
-		$cmd = "perl $scriptspath/split_xmap_standalone.pl $alignmolXmap $alignmolQmap $alignmolRmap $alignmolPrefix $alignmolDir/contigs";
-		print "\n\tRunning command: $cmd\n\n";
-		system($cmd);
-		print "\n";
-	}
-	else {
-		print "Skipping Step 12 Single molecule alignments. Input BNX not provided or does not exist\n";
-		print "\n";
-	}
-}
-else {
-	print "Skipping Step 12. Final merged fragileSiteRepaired CMAP not found\n";
-}
-
-
-# Step 13: run SV detection on final cmap
-print "\n\n===Step 13: Run SV detection on new merged cmap ===\n\n";
+# Step 14: run SV detection on final cmap
+print "\n\n===Step 14: Run SV detection on new merged cmap ===\n\n";
 if (defined $inputs{runSV}) {
 	if ((exists $inputs{cmap}) && (exists $inputs{ref})) {
 		my $errbin = "";
@@ -700,12 +745,12 @@ if (defined $inputs{runSV}) {
 		else { print "WARNING: Merged CMAP $map and/or alignref_final errbin $errbin not found! Skipping Step 8 runSV...\n"; }
 	}
 	else {
-		print "Skipping Step 13. Original assembly CMAP and/or reference CMAP not provided\n";
+		print "Skipping Step 14. Original assembly CMAP and/or reference CMAP not provided\n";
 		print "\n";
 	}
 }
 else {
-	print "Skipping Step 13 SV detection. Add --runSV to enable SV detection\n";
+	print "Skipping Step 14 SV detection. Add --runSV to enable SV detection\n";
 	print "\n";
 }
 print "\n";

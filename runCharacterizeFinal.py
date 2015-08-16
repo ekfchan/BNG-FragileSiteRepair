@@ -139,6 +139,7 @@ def runCharacterize(cwd, rabin, refcmap, contigdir, contigbase, runaligns, xmapp
         varsP.groupContigs = False
         varsP.stageComplete = contigbase
         varsP.outputContigFolder = contigdir
+        varsP.memoryLogpath  = os.path.join(contigdir, "memory_log.txt")
         varsP.stdoutlog = True
         varsP.pipeReportFile = os.path.join(contigdir, "pipeReport.txt")
         varsP.parseArguments() #parses optArgumentsFile
@@ -153,9 +154,11 @@ def runCharacterize(cwd, rabin, refcmap, contigdir, contigbase, runaligns, xmapp
         varsP.contigAlignTarget = os.path.split(xmappath)[0]
         print "Loading alignments from\n" + xmappath + "\n"
 
-    print MapClassesRev.TopLevelCharacterization(varsP, [os.path.join(varsP.contigAlignTarget, contigbase)])
+#no longer using this in Pipeline
+    #print MapClassesRev.TopLevelCharacterization(varsP, [os.path.join(varsP.contigAlignTarget, contigbase)])
 
-    #print cm.characterizeContigs(varsP, xmappath) #this is redundant with above
+    print cm.characterizeContigs(varsP, xmappath) #this is redundant with above
+
 #end runCharacterize
 
 

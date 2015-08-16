@@ -94,27 +94,29 @@ if( !exists $inputs{prefix} ) { $inputs{prefix} = "FSITEREPAIRED_FINAL"; }
 # splitCmapByIds.sh <cmap to split> <output_folder> <output_prefix>
 my $dtNow = DateTime->now;
 print "\n\n===== Split $inputs{cmap} =====\n\n";
-my $cmd = "$splitCmapByIds $inputs{cmap} $qcmapdir $inputs{prefix}"; 
+
+my $cmd = "cd $qcmapdir; ~/tools/RefAligner -i $inputs{cmap} -o $inputs{prefix} -split -stdout -stderr"; 
+#my $cmd = "$splitCmapByIds $inputs{cmap} $qcmapdir $inputs{prefix}"; 
 print "Running command: \n\n $cmd \n\n";
 system($cmd); 
 
-# Wait until qsub is done. 
-open( CMAPS, "$qcmapdir/cmapIdsToSplit.txt" ); 
-my $numcmaps=0; 
-while (<CMAPS>) { $numcmaps++ if  !/^\s+?$/;}
-close CMAPS;
-print "\nThere are $numcmaps CMAP IDs\n"; 
-my @numfiles;
-while( $numcmaps != scalar(@numfiles)-1 ) {
-	#@numfiles = capture("ls -1 $qcmapdir/$inputs{prefix}"."*.cmap"); 
-	@numfiles = capture("ls -1 $qcmapdir/");
-	sleep(5);
-	my $left = ($numcmaps) - (scalar(@numfiles)-1);
-	print "\tWaiting...$left still to go...\n";
-}
-print "\nFinished. There are ",scalar(@numfiles)-1," cmaps in $qcmapdir\n"; 
-print "Waiting 30s for files to propogate...\n";
-sleep (29);
+## Wait until qsub is done. 
+#open( CMAPS, "$qcmapdir/cmapIdsToSplit.txt" ); 
+#my $numcmaps=0; 
+#while (<CMAPS>) { $numcmaps++ if  !/^\s+?$/;}
+#close CMAPS;
+#print "\nThere are $numcmaps CMAP IDs\n"; 
+#my @numfiles;
+#while( $numcmaps != scalar(@numfiles)-1 ) {
+	##@numfiles = capture("ls -1 $qcmapdir/$inputs{prefix}"."*.cmap"); 
+	#@numfiles = capture("ls -1 $qcmapdir/");
+	#sleep(5);
+	#my $left = ($numcmaps) - (scalar(@numfiles)-1);
+	#print "\tWaiting...$left still to go...\n";
+#}
+#print "\nFinished. There are ",scalar(@numfiles)-1," cmaps in $qcmapdir\n"; 
+#print "Waiting 10s for files to propogate...\n";
+#sleep (9);
 
 #copy($inputs{cmap},$qcmapdir."/") or warn "Copy failed: $!";
 

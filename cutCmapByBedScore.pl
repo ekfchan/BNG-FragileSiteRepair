@@ -283,7 +283,7 @@ print "$leftover stitches with >$scoreThreshold score output in $bedFileOut\n\n"
 
 # setup RefAligner command to break the input CMAP at specificed locations and output
 my $cmd;
-my $RefAligner = abs_path("./RefAligner");
+my $RefAligner = glob("~/tools/RefAligner");
 $cmd = "cd $inputs{output}; $RefAligner -f -i $cmapFileIn -o $inputs{output}/$outputPrefix -merge -minlen $maxfill -minsites 2 -break 100000 ".$breakLine." -stdout -stderr";
 print "Running command: $cmd\n";
 system($cmd);
