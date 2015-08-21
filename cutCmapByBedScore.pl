@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Usage: perl cutCmapByBedScore.pl <--bed stitchPositions_scored.bed> <--stats stitchPositions_scoreStats.csv> <--cmap fragileSiteRepaired_merged.cmap> <--output output folder> [<--prefix output prefix>] [--threshold score threshold] [--maxfill maxfill <minlen filter>]
+# Usage: perl cutCmapByBedScore.pl <--bed stitchPositions_scored.bed> <--stats stitchPositions_scoreStats.csv> <--cmap fragileSiteRepaired_merged.cmap> <--output output folder> [<--prefix output prefix>] [--threshold <score threshold below which to cut default=1.0>] [--maxfill <minlen filter bp default=30000>]
 # Example:
 
 use strict;
@@ -8,6 +8,7 @@ use warnings;
 use Cwd qw(abs_path);
 use File::Basename;
 use Getopt::Long qw(:config bundling); 
+use Scalar::Util qw(looks_like_number);
 
 print "\n";
 print qx/ps -o args $$/;
@@ -15,10 +16,10 @@ print "\n";
 
 ## << usage statement and variable initialisation >>
 my %inputs = (); 
-GetOptions( \%inputs, 'stats=s', 'bed=s', 'cmap=s', 'prefix=s', 'threshold=i', 'maxfill:i', 'output:s'); 
+GetOptions( \%inputs, 'stats=s', 'bed=s', 'cmap=s', 'prefix=s', 'threshold=s', 'maxfill:i', 'output:s'); 
 
 if( !exists $inputs{bed} | !exists $inputs{stats} | !exists $inputs{cmap} | !exists $inputs{output} ) {
-	print "Usage: perl cutCmapByBedScore.pl <--bed stitchPositions_scored.bed> <--stats stitchPositions_scoreStats.csv> <--cmap fragileSiteRepaired_merged.cmap> <--prefix output prefix> [--threshold score threshold] [--maxfill maxfill <minlen filter>]\n"; 
+	print "Usage: perl cutCmapByBedScore.pl <--bed stitchPositions_scored.bed> <--stats stitchPositions_scoreStats.csv> <--cmap fragileSiteRepaired_merged.cmap> <--output output folder> [<--prefix output prefix>] [--threshold <score threshold below which to cut default=1.0>] [--maxfill <minlen filter bp default=30000>]\n"; 
 	exit 0; 
 }
 foreach my $key ("bed","stats","cmap", "output") {
@@ -28,10 +29,12 @@ foreach my $key ("bed","stats","cmap", "output") {
 }
 
 
-my $scoreThreshold = 10;
+my $scoreThreshold = 1.0;
 my $maxfill = 300000;
-if (exists $inputs{threshold}) { $scoreThreshold = $inputs{threshold}; }
+if (exists $inputs{threshold} && looks_like_number($inputs{threshold})) { $scoreThreshold = $inputs{threshold}; }
 if (exists $inputs{maxfill}) { $maxfill = $inputs{maxfill} / 1000; }
+
+print "\nBreaking maps at stitchPositions with score <$scoreThreshold...\n\n";
 
 
 # Load SCORED input BED file (stitchPositions_scored.bed)
@@ -88,24 +91,26 @@ while (my $line = <STATS>) {
 		next; }
 	else {
 		my @s = split(",",$line);
-		#BedLine,Type,RefId,RefStart-End,RefLabelStart-End,MapId,MapStart-End,MapLabelStart-End,TotalHits,UniqueMolecules,TotalConf,AvgConfPerHit,AvgConfPerMol,Score,AltScore,MoleculeMatches
+		#BedLine,Type,FsiteSize,RefId,RefStart-End,RefLabelStart-End,MapId,MapStart-End,MapLabelStart-End,AvgMapCov,TotalHits,UniqueMolecules,TotalConf,AvgConfPerHit,AvgConfPerMol,Score,AltScore,MoleculeMatches
 			my %statsLine = (
 				"BedLine"  => "$s[0]",
 				#"Type" => "$s[1]", 
 				#"RefId"  => "$s[2]",
-				#"RefStart-End"  => "$s[3]",
-				#"RefLabelStart-End" => "$s[4]",
-				"MapId" => "$s[5]",
-				"MapStart-End" => "$s[6]",
-				#"MapLabelStart-End" => "$s[7]",
-				#"TotalHits" => "$s[8]",
-				#"UniqueMolecules" => "$s[9]",
-				#"TotalConf" => "$s[10]",
-				#"AvgConfPerHit" => "$s[11]",
-				#"AvgConfPerMol" => "$s[12]",
-				#"Score" => "$s[13]",
-				#"AltScore" => "$s[14]",
-				#"MoleculeMatches" => "$s[15]"
+				#"FsiteSize" => "$s[3]",
+				#"RefStart-End"  => "$s[4]",
+				#"RefLabelStart-End" => "$s[5]",
+				"MapId" => "$s[6]",
+				"MapStart-End" => "$s[7]",
+				#"MapLabelStart-End" => "$s[8]",
+				#"AvgMapCov" => "$s[9],
+				#"TotalHits" => "$s[10]",
+				#"UniqueMolecules" => "$s[11]",
+				#"TotalConf" => "$s[12]",
+				#"AvgConfPerHit" => "$s[13]",
+				#"AvgConfPerMol" => "$s[14]",
+				#"Score" => "$s[15]",
+				#"AltScore" => "$s[16]",
+				#"MoleculeMatches" => "$s[17]"
 			);
 						
 			push @statsIn, \%statsLine;
@@ -244,6 +249,12 @@ for (my $i=0; $i<scalar(@bedIn); $i++) {
 		if (($qryStart == $qryEnd)) {
 			$breakpoint = $qryStart;
 		}
+		elsif ($qryEnd == 0) {
+			$breakpoint = $qryStart;
+		}
+		elsif ($qryStart == 0) {
+			$breakpoint = $qryEnd;
+		}		
 		else {
 			$breakpoint = "$qryStart $qryEnd";
 		}
@@ -284,7 +295,12 @@ print "$leftover stitches with >$scoreThreshold score output in $bedFileOut\n\n"
 # setup RefAligner command to break the input CMAP at specificed locations and output
 my $cmd;
 my $RefAligner = glob("~/tools/RefAligner");
-$cmd = "cd $inputs{output}; $RefAligner -f -i $cmapFileIn -o $inputs{output}/$outputPrefix -merge -minlen $maxfill -minsites 2 -break 100000 ".$breakLine." -stdout -stderr";
+if ($undoCount > 0) {
+	$cmd = "cd $inputs{output}; $RefAligner -f -i $cmapFileIn -o $inputs{output}/$outputPrefix -merge -minlen $maxfill -minsites 2 -break 100000 ".$breakLine." -stdout -stderr";
+}
+else {
+	$cmd = "cd $inputs{output}; $RefAligner -f -i $cmapFileIn -o $inputs{output}/$outputPrefix -merge -minlen $maxfill -minsites 2 -stdout -stderr";
+}
 print "Running command: $cmd\n";
 system($cmd);
 print "\n";

@@ -4,7 +4,7 @@
 # If .bed file of fragile sites is not provided, an input (reference) fasta is expected, from which potential fragiles sites will be calculated. 
 # Assembly maps are stitched together based on alignments if the maps start and stop overlap a fragile site
 
-# Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> [--ref <reference.cmap>] --output <output folder> [--maxlab <max_label_gap_tolerence = 1>] [--maxfill <max basepairs to fill between contigs = 30000>] [--wobble <fragile site wobble in bp = 30000>] [--seq <sequence bp +/- fragile site to print in final BED = 50>] [--force <overwrite output folder>] [--n <number of CPU cores>] [--j <number of parallel jobs>] [--optArgs <optArguments_human.xml>] [--runSV <enable run SV detection>] [--bnx <input.bnx to run alignmol>]
+# Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --err <alignmol_merge.err> [--ref <reference.cmap>] [--threshold <minimum score threshold below which to cut stitched maps>] [--maxlab <max_label_gap_tolerence = 1>] [--maxfill <max basepairs to fill between contigs = 30000>] [--wobble <fragile site wobble in bp = 30000>] [--seq <sequence bp +/- fragile site to print in final BED = 50>] [--force <overwrite output folder>] [--n <number of CPU cores>] [--j <number of parallel jobs>] [--optArgs <optArguments_human.xml>] [--runSV <enable run SV detection>] [--bnx <input.bnx to run alignmol>] [--break <break maps at stitch locations with score below threshold>] [--endoutlier <Pvalue penalty for endoutlier = 0>]
 
 use strict;
 use warnings;
@@ -17,6 +17,7 @@ use File::Find;
 use IPC::System::Simple qw(system capture);
 #use Parallel::Iterator qw(iterate_as_array);
 #use Parallel::Loops;
+use Scalar::Util qw(looks_like_number);
 use Parallel::ForkManager;
 use DateTime;
 use DateTime::Format::Human::Duration;
@@ -30,20 +31,26 @@ my $cpuCount=4;
 my $jobs=1;
 my $mem = 32;
 
+# << usage statement and variable initialisation >>
+my %inputs = (); 
+$inputs{'force'}=0;
+GetOptions( \%inputs, 'fasta:s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'bed:s', 'seq:i', 'cmap:s', 'ref:s', 'n:i','j:i','optArgs:s', 'runSV', 'bnx:s', 'step:i', 'threshold:s', 'random', 'err:s', 'break', 'h|help', 'endoutlier:s'); 
+
+my $hasbed = 0; 
+my $getSeq = 0;
+my $threshold = 1.0;
+
+if ($inputs{h} || $inputs{help}) {
+	Usage();
+	exit 0;
+}
+
 print "\n";
 print qx/ps -o args $$/;
 print "\n";
 
-# << usage statement and variable initialisation >>
-my %inputs = (); 
-$inputs{'force'}=0;
-GetOptions( \%inputs, 'fasta:s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'bed:s', 'seq:i', 'cmap:s', 'ref:s', 'n:i','j:i','optArgs:s', 'runSV', 'bnx:s', 'step:i'); 
-
-my $hasbed = 0; 
-my $getSeq = 0;
-
 if ( (!exists $inputs{fasta} & !exists $inputs{bed}) | !exists $inputs{xmap} | !exists $inputs{qcmap} | !exists $inputs{rcmap} | !exists $inputs{errbin} | !exists $inputs{output} ) {
-	print "Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> [--ref <reference.cmap>] --output <output folder> [--maxlab <max_label_gap_tolerence = 1>] [--maxfill <max basepairs to fill between contigs = 30000>] [--wobble <fragile site wobble in bp = 30000>] [--seq <sequence bp +/- fragile site to print in final BED = 50>] [--force <overwrite output folder>] [--n <number of CPU cores>] [--j <number of parallel jobs>] [--optArgs <optArguments_human.xml>] [--runSV <enable run SV detection>] [--bnx <input.bnx to run alignmol>]\n"; 
+	print "Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --err <alignmol_merge.err> [--ref <reference.cmap>] [--threshold <minimum score threshold below which to cut stitched maps>] [--maxlab <max_label_gap_tolerence = 1>] [--maxfill <max basepairs to fill between contigs = 30000>] [--wobble <fragile site wobble in bp = 30000>] [--seq <sequence bp +/- fragile site to print in final BED = 50>] [--force <overwrite output folder>] [--n <number of CPU cores>] [--j <number of parallel jobs>] [--optArgs <optArguments_human.xml>] [--runSV <enable run SV detection>] [--bnx <input.bnx to run alignmol>] [--break <break maps at stitch locations with score below threshold>]\n"; 
 	exit 0; 
 }
 else {
@@ -74,8 +81,8 @@ else {
 	print "Maximum memory to use: ", int($mem)," GB\n";
 	print "\n";
 	
-	foreach my $key ("xmap","qcmap","rcmap","errbin","output","bed","fasta", "cmap", "ref", "optArgs", "bnx") {
-		if (exists $inputs{$key} and $inputs{$key} =~ /[a-z]/i) {
+	foreach my $key ("xmap","qcmap","rcmap","errbin","output","bed","fasta", "cmap", "ref", "optArgs", "bnx", "err") {
+		if (exists $inputs{$key} and $inputs{$key} =~ /[a-z|0-9]/i) {
 			$inputs{$key} = abs_path($inputs{$key});
 		}
 	}
@@ -97,9 +104,23 @@ else {
 		if( exists $inputs{fasta} ) {
 			print "$inputs{bed} fragile sites file already provided.\n$inputs{fasta} will be ignored.\n";
 		}
-	} 
+	}
+		
+	if( exists $inputs{threshold} && looks_like_number($inputs{threshold}) ) { $threshold = $inputs{threshold}; } 
+	if( !exists $inputs{endoutlier} ) { $inputs{endoutlier} = 0; }
 }
+
 my $splitprefix = basename(abs_path($inputs{xmap}), ".xmap");
+
+# Make sure dependency scripts exist
+my $scriptspath = abs_path(dirname($0));
+if (!-e "$scriptspath/calcFragileSites.pl" | !-e "$scriptspath/split_xmap_standalone.pl" | !-e "$scriptspath/gapFill.pl" | !-e "$scriptspath/extractFASTA_fromBED.pl" | !-e "$scriptspath/runCharacterizeFinal.py" | !-e "$scriptspath/callSV.pl" | !-e "$scriptspath/scoreStitchPositionsBED_v4.pl" | !-e "$scriptspath/cutCmapByBedScore.pl") {
+	die "ERROR: Dependency scripts not found at $scriptspath\n"; 
+}
+if( !-e $ENV{"HOME"}."/tools/RefAligner" | !-e $ENV{"HOME"}."/scripts/HybridScaffold/scripts/calc_cmap_stats.pl" | !-e $ENV{"HOME"}."/scripts/optArguments_human.xml" | !-e $ENV{"HOME"}."/scripts/runSV.py") {
+	# die "ERROR: Pipeline tools and scripts not found. Please ensure ~/tools and ~/scripts are properly set up.\n"; 
+	die "abs_path('~/tools/RefAligner') not found: $!\n"; 
+}
 
 #print out input variables
 if( $hasbed==0 ) {
@@ -110,13 +131,18 @@ if( $hasbed==0 ) {
 }
 else { print "Input BED: $inputs{bed}\n";  }
 
-print "Input XMAP: $inputs{xmap}\n";
-print "Input QCMAP: $inputs{qcmap}\n";
-print "Input RMCAP: $inputs{rcmap}\n";
-print "Input ERRBIN: $inputs{errbin}\n";
-if (exists $inputs{cmap}) {print "Input CMAP: $inputs{cmap}\n";} else {print "Input original assembly CMAP: not provided\n";}
+print "Input alignref_final XMAP: $inputs{xmap}\n";
+print "Input alignref_final QCMAP: $inputs{qcmap}\n";
+print "Input alignref_final RMCAP: $inputs{rcmap}\n";
+print "Input alignref_final ERRBIN: $inputs{errbin}\n";
+if (exists $inputs{cmap}) {print "Input assembly CMAP: $inputs{cmap}\n";} else {print "Input original assembly CMAP: not provided\n";}
 if (exists $inputs{ref}) {print "Input reference CMAP: $inputs{ref}\n";} else {print "Input reference CMAP: not provided\n";}
+if( !exists $inputs{optArgs} ) { $inputs{optArgs} = abs_path($ENV{"HOME"}."/scripts/optArguments_human.xml"); }
+if ( exists $inputs{ref} ) { print "\toptArguments for Characterization: $inputs{optArgs}\n"; }
 if (exists $inputs{bnx}) {print "Input BNX: $inputs{bnx}\n";} else {print "Input BNX: not provided\n";}
+if (exists $inputs{err}) { print "Input alignmol_merge ERR: $inputs{err}\n"; }
+if (exists $inputs{bnx} && !exists $inputs{err}) { print "\tWARNING: alignmol ERR file not provided! Skipping single molecule alignments.\n"; }
+if (exists $inputs{bnx} && exists $inputs{ref} && exists $inputs{ref} && exists $inputs{err} && defined $inputs{break}) {print "\tBreaking maps at stitchPostions with score <$threshold\n";}
 print "Output folder: $inputs{output}\n\n";
 print "Maximum labels between maps: $inputs{maxlab}\n";
 print "Maximum basepairs to fill between maps: $inputs{maxfill}\n";
@@ -125,16 +151,8 @@ print "\n";
 
 if (exists $inputs{runSV} && exists $inputs{ref}) { print "SV module enabled\n\n"; }
 
-# Make sure dependency scripts exist
-my $scriptspath = abs_path(dirname($0));
-if (!-e "$scriptspath/calcFragileSites.pl" | !-e "$scriptspath/split_xmap_standalone.pl" | !-e "$scriptspath/gapFill.pl" | !-e "$scriptspath/extractFASTA_fromBED.pl" | !-e "$scriptspath/runCharacterizeFinal.py" | !-e "$scriptspath/callSV.pl" | !-e "$scriptspath/scoreStitchPositionsBED_v3.pl" | !-e "$scriptspath/cutCmapByBedScore.pl") {
-	die "ERROR: Dependency scripts not found at $scriptspath\n"; 
-}
-if( !-e $ENV{"HOME"}."/tools/RefAligner" | !-e $ENV{"HOME"}."/scripts/HybridScaffold/scripts/calc_cmap_stats.pl" | !-e $ENV{"HOME"}."/scripts/optArguments_human.xml" | !-e $ENV{"HOME"}."/scripts/runSV.py") {
-	# die "ERROR: Pipeline tools and scripts not found. Please ensure ~/tools and ~/scripts are properly set up.\n"; 
-	die "abs_path('~/tools/RefAligner') not found: $!\n"; 
-}
-if( !exists $inputs{optArgs} ) { $inputs{optArgs} = abs_path($ENV{"HOME"}."/scripts/optArguments_human.xml"); }
+
+
 
 
 # check output folder
@@ -170,9 +188,12 @@ if ( $hasbed==1 and -e $inputs{bed}) {
 else {
 	$stime = DateTime->now;
 	# Usage: perl calcFragilesSites.pl <input FASTA> [output.bed] [sequence bp +/- fsite to print out]
-	$cmd = "perl $scriptspath/calcFragileSites.pl $inputs{fasta} $inputs{output}";
+	$cmd = "perl $scriptspath/calcFragileSites.pl --fasta $inputs{fasta} --output $inputs{output}";
 	if ($getSeq == 1) {
-		$cmd = $cmd." $inputs{seq}";
+		$cmd = $cmd." --buffer $inputs{seq}";
+	}
+	if (exists $inputs{random}) {
+		$cmd = $cmd." --random";
 	}
 	print "Running command: $cmd\n";
 	system($cmd);
@@ -325,7 +346,7 @@ print "Running command: $cmd\n";
 print "\n";
 system($cmd);
 my $finalmap = "$inputs{output}/$splitprefix"."_fragileSiteRepaired.cmap";
-print "\n";
+print "\n\n";
 
 print "Generating merged stitchPositions BED...";
 my $mergedBED = ""; 
@@ -421,14 +442,20 @@ my $alignreffinalRcmap = "$inputs{output}/alignref_final/$splitprefix"."_fragile
 
 
 # Step 7: align molecules to merged fragileSiteRepaired CMAP
+my $alignmolDir="";
 print "\n\n===Step 7: Run single molecule alignments against fragileSiteRepaired merged cmap ===\n\n";
 my $alignmolXmap="";
-if (defined $inputs{bnx} && exists $inputs{bnx}) {
+my $alignmolRmap="";
+if (defined $inputs{bnx} && exists $inputs{bnx} && defined $inputs{err} && exists $inputs{err}) {
 	print "Running alignment of $inputs{bnx} to $finalmap\n\n";
 	mkpath("$inputs{output}/alignmol") or die "ERROR: Cannot create output directory $inputs{output}/alignmol: $!\n";
-	my $alignmolDir = abs_path("$inputs{output}/alignmol");
+	$alignmolDir = abs_path("$inputs{output}/alignmol");
+	my $errHash_ref = extractErr($inputs{err});
+	my %errHash = %$errHash_ref;	
 	# $ cd /home/palak; /home/palak/tools/RefAligner.mic -ref /home/palak/data/HuRef_fragileSiteRepair_IrysView/HuRef_105x_hg19/output/contigs/exp_refineFinal1/EXP_REFINEFINAL1.cmap -o /home/palak/data/HuRef_fragileSiteRepair_IrysView/HuRef_105x_hg19/output/contigs/exp_refineFinal1/alignmol/EXP_REFINEFINAL1_1 -i /home/palak/data/HuRef_fragileSiteRepair_IrysView/HuRef_105x_hg19/output/all_1_of_30.bnx -f -stdout -stderr -maxthreads 240 -usecolor 1 -FP 1.5 -FN 0.15 -sd 0. -sf 0.2 -sr 0.03 -res 3.3 -output-veto-filter intervals.txt$ -T 1e-9 -usecolor 1 -S -1000 -biaswt 0 -res 3.3 -resSD 0.75 -outlier 0.0001 -extend 1 -BestRef 1 -maptype 1 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -maxmem 7
-	$cmd = "cd $alignmolDir; ~/tools/RefAligner -f -ref $finalmap -o $splitprefix"."_fragileSiteRepaired_merged_alignmol -i $inputs{bnx} -maxthreads $cpuCount -maxmem ".($mem)." -usecolor 1 -FP 1.5 -FN 0.15 -sd 0. -sf 0.2 -sr 0.03 -res 3.3 -output-veto-filter intervals.txt\$ -T 1e-9 -usecolor 1 -S -1000 -biaswt 0 -res 3.3 -resSD 0.75 -outlier 0.0001 -extend 1 -BestRef 1 -maptype 1 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -stdout -stderr";
+	#$cmd = "cd $alignmolDir; ~/tools/RefAligner -f -ref $finalmap -o $splitprefix"."_fragileSiteRepaired_merged_alignmol -i $inputs{bnx} -maxthreads $cpuCount -maxmem ".($mem)." -usecolor 1 -FP 1.5 -FN 0.15 -sd 0. -sf 0.2 -sr 0.03 -res 3.3 -output-veto-filter intervals.txt\$ -T 1e-9 -usecolor 1 -S -1000 -biaswt 0 -res 3.3 -resSD 0.75 -outlier 0.0001 -extend 1 -BestRef 1 -maptype 1 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -stdout -stderr";
+	$cmd = "cd $alignmolDir; ~/tools/RefAligner -i $inputs{bnx} -o $splitprefix"."_fragileSiteRepaired_merged_alignmol -ref $finalmap -f -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP $errHash{'FP(/100kb)'} -FN $errHash{'FN(rate)'} -sd $errHash{'sd'} -sf $errHash{'sf'} -sr $errHash{'sr'} -res 3.3 -bpp $errHash{'bpp'} -output-veto-filter intervals.txt\$ -T 1e-10 -L 130 -nosplit 2 -biaswt 0 -res 3.3 -resSD 0.75 -extend 1 -BestRef 1 -maptype 0 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -deltaX 4 -deltaY 6 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -outlier 0.00001 -endoutlier $inputs{endoutlier} -outlierMax 40. -cres 5.4 3 0.1 -MaxSE 0.5 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -maxmem $mem";
+	
 	print "\tRunning command: $cmd\n\n";
 	system($cmd);
 	sleep(5);
@@ -436,7 +463,7 @@ if (defined $inputs{bnx} && exists $inputs{bnx}) {
 	#split xmap into _contig maps
 	$alignmolXmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_alignmol.xmap";
 	my $alignmolQmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_alignmol_q.cmap";
-	my $alignmolRmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_alignmol_r.cmap";
+	$alignmolRmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_alignmol_r.cmap";
 	my $alignmolPrefix = "$splitprefix"."_fragileSiteRepaired_merged_alignmol_contig";
 	#mkpath("$alignmolDir/contigs") or die "ERROR: Cannot create output directory $inputs{output}/alignmol/contigs: $!\n";
 	# Usage: perl split_xmap_standalone.pl [xmap] [_q.cmap] [_r.cmap] [_contig prefix] [output folder]
@@ -466,7 +493,7 @@ if (defined $inputs{bnx} && exists $inputs{bnx} && -e $finalmap && exists $input
 	mkpath("$inputs{output}/scoreBED") or warn "WARNING: Cannot create output directory $inputs{output}/scoreBED: $!\nNext steps may fail...\n";
 	$scoredBED = $inputs{output}."/scoreBED/$scoredBED";
 	
-	$cmd = "perl $scriptspath/scoreStitchPositionsBED_v3.pl --bed $mergedBED --xmap $alignreffinalXmap --qcmap $alignreffinalQcmap --rcmap $alignreffinalRcmap --alignmol $alignmolXmap --n $cpuCount --output $inputs{output}/scoreBED/ > $inputs{output}/scoreBED/".basename($mergedBED,".bed")."_scored_log.txt 2>&1";
+	$cmd = "perl $scriptspath/scoreStitchPositionsBED_v4.pl --bed $mergedBED --xmap $alignreffinalXmap --qcmap $alignreffinalQcmap --rcmap $alignreffinalRcmap --alignmolxmap $alignmolXmap --alignmolrcmap $alignmolRmap --n $cpuCount --output $inputs{output}/scoreBED/ > $inputs{output}/scoreBED/".basename($mergedBED,".bed")."_scored_log.txt 2>&1";
 	print "\n\tRunning command: $cmd\n\n";
 	system($cmd);
 	print "\n"; 
@@ -479,35 +506,43 @@ else {
 
 
 # Step 9: cut fragileSiteRepaired CMAP where score is too low
-print "\n\n=== Step 9: Breaking fragileSiteRepaired merged CMAP based on scores in BED ===\n\n";
-my $pre = basename($finalmap, ".cmap")."_final";
-#$pre = $pre."_final";
-my $newfinalmap = "";
-my $newBED = "$inputs{output}/scoreBED/".basename($scoredBED, ".bed");
-if (defined $inputs{bnx} && exists $inputs{bnx} && -e $finalmap && exists $inputs{ref}) {
-	if (-e $scoredBED && -e $scoredSTATS) {
-		# Usage: perl cutCmapByBedScore.pl <--bed stitchPositions_scored.bed> <--stats stitchPositions_scoreStats.csv> <--cmap fragileSiteRepaired_merged.cmap> <--prefix output prefix> [--threshold score threshold] [--maxfill maxfill <minlen filter>]
-		$cmd = "perl $scriptspath/cutCmapByBedScore.pl --bed $scoredBED --stats $scoredSTATS --cmap $finalmap --prefix $pre --maxfill $inputs{maxfill} --output $inputs{output}/scoreBED/";
-		print "\n\tRunning command: $cmd\n\n";
-		system($cmd);
-		print "\n"; 
-		
-		$newfinalmap = $inputs{output}."/scoreBED/".$pre.".cmap";
-		$newBED = $newBED."_final.bed";
-		
-		copy("$newfinalmap","$inputs{output}") or print "Copy of final merged fragileSiteRepaired CMAP $newfinalmap failed: $!\n";
-		$newfinalmap = abs_path($inputs{output}."/".$pre.".cmap");
-		copy("$newBED","$inputs{output}") or print "Copy of final merged fragileSiteRepaired CMAP $newBED failed: $!\n";
-		#$newBED = "$inputs{output}/".basename($scoredBED, ".bed")."_final.bed";
+my $newfinalmap="";
+my $newBED="";
+if (defined $inputs{break}) {
+	print "\n\n=== Step 9: Breaking fragileSiteRepaired merged CMAP based on scores in BED ===\n\n";
+	my $pre = basename($finalmap, ".cmap")."_final";
+	#$pre = $pre."_final";
+	$newBED = "$inputs{output}/scoreBED/".basename($scoredBED, ".bed");
+	if (defined $inputs{bnx} && exists $inputs{bnx} && -e $finalmap && exists $inputs{ref}) {
+		if (-e $scoredBED && -e $scoredSTATS) {
+			# Usage: perl cutCmapByBedScore.pl <--bed stitchPositions_scored.bed> <--stats stitchPositions_scoreStats.csv> <--cmap fragileSiteRepaired_merged.cmap> <--prefix output prefix> [--threshold score threshold] [--maxfill maxfill <minlen filter>]
+			$cmd = "perl $scriptspath/cutCmapByBedScore.pl --bed $scoredBED --stats $scoredSTATS --cmap $finalmap --prefix $pre --threshold $threshold --maxfill $inputs{maxfill} --output $inputs{output}/scoreBED/";
+			print "\n\tRunning command: $cmd\n\n";
+			system($cmd);
+			print "\n"; 
+			
+			$newfinalmap = $inputs{output}."/scoreBED/".$pre.".cmap";
+			$newBED = $newBED."_final.bed";
+			
+			copy("$newfinalmap","$inputs{output}") or print "Copy of final merged fragileSiteRepaired CMAP $newfinalmap failed: $!\n";
+			$newfinalmap = abs_path($inputs{output}."/".$pre.".cmap");
+			copy("$newBED","$inputs{output}") or print "Copy of final merged fragileSiteRepaired CMAP $newBED failed: $!\n";
+			#$newBED = "$inputs{output}/".basename($scoredBED, ".bed")."_final.bed";
+		}
+		else {
+			print "Skipping Step 9 cutting CMAP based on scores. Scored BED and/or stats file not provided or does not exist\n\n";
+		}
 	}
 	else {
-		print "Skipping Step 9 cutting CMAP based on scores. Scored BED and/or stats file not provided or does not exist\n";
+		print "Skipping Step 9 cutting CMAP based on scores. Input BNX, reference, or fragileSiteRepaired merged CMAP not provided or does not exist\n";
+		print "\n";
 	}
 }
 else {
-	print "Skipping Step 9 cutting CMAP based on scores. Input BNX, reference, or fragileSiteRepaired merged CMAP not provided or does not exist\n";
+	print "Skipping Step 9 breaking CMAP based on scores. Use --break to enable\n";
 	print "\n";
 }
+
 
 
 # Step 10: run CharacterizeFinal on new final merged CMAP if needed
@@ -533,7 +568,7 @@ if (-e $newfinalmap) {
 	}
 }
 else {
-	print "Skipping Step 10 final characterizeFinal. Final merged fragileSiteRepaired CMAP not found and/or input BNX not provided\n";
+	print "Skipping Step 10 final characterizeFinal. Final merged fragileSiteRepaired CMAP not found and/or input BNX not provided\n\n";
 }
 
 
@@ -543,10 +578,14 @@ if (-e $newfinalmap) {
 	mkpath("$inputs{output}/alignmol_final") or warn "WARNING: Cannot create output directory $inputs{output}/alignmol_final : $!\nNext steps may fail...\n"; 
 	print "\n\n===Step 11: Run final single molecule alignments against final fragileSiteRepaired merged cmap ===\n\n";
 	#$alignmolXmap="";
-	if (defined $inputs{bnx} && exists $inputs{bnx}) {
+	if (defined $inputs{bnx} && exists $inputs{bnx} && defined $inputs{err} && exists $inputs{err}) {
 		print "Running alignment of $inputs{bnx} to $newfinalmap\n\n";
-		my $alignmolDir = abs_path("$inputs{output}/alignmol_final");
-		$cmd = "cd $alignmolDir; ~/tools/RefAligner -f -ref $newfinalmap -o $splitprefix"."_fragileSiteRepaired_merged_final_alignmol -i $inputs{bnx} -maxthreads $cpuCount -maxmem ".($mem)." -usecolor 1 -FP 1.5 -FN 0.15 -sd 0. -sf 0.2 -sr 0.03 -res 3.3 -output-veto-filter intervals.txt\$ -T 1e-9 -usecolor 1 -S -1000 -biaswt 0 -res 3.3 -resSD 0.75 -outlier 0.0001 -extend 1 -BestRef 1 -maptype 1 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -stdout -stderr";
+		my $errHash_ref = extractErr($inputs{err});
+		my %errHash = %$errHash_ref;	
+		$alignmolDir = abs_path("$inputs{output}/alignmol_final");
+		#$cmd = "cd $alignmolDir; ~/tools/RefAligner -f -ref $newfinalmap -o $splitprefix"."_fragileSiteRepaired_merged_final_alignmol -i $inputs{bnx} -maxthreads $cpuCount -maxmem ".($mem)." -usecolor 1 -FP 1.5 -FN 0.15 -sd 0. -sf 0.2 -sr 0.03 -res 3.3 -output-veto-filter intervals.txt\$ -T 1e-9 -usecolor 1 -S -1000 -biaswt 0 -res 3.3 -resSD 0.75 -outlier 0.0001 -extend 1 -BestRef 1 -maptype 1 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -stdout -stderr";
+		$cmd = "cd $alignmolDir; ~/tools/RefAligner -i $inputs{bnx} -o $splitprefix"."_fragileSiteRepaired_merged_final_alignmol -ref $newfinalmap -f -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP $errHash{'FP(/100kb)'} -FN $errHash{'FN(rate)'} -sd $errHash{'sd'} -sf $errHash{'sf'} -sr $errHash{'sr'} -res 3.3 -bpp $errHash{'bpp'} -output-veto-filter intervals.txt\$ -T 1e-10 -L 130 -nosplit 2 -biaswt 0 -res 3.3 -resSD 0.75 -extend 1 -BestRef 1 -maptype 0 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -deltaX 4 -deltaY 6 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -outlier 0.00001 -endoutlier $inputs{endoutlier} -outlierMax 40. -cres 5.4 3 0.1 -MaxSE 0.5 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -maxmem $mem";
+		
 		print "\tRunning command: $cmd\n\n";
 		system($cmd);
 		sleep(5);
@@ -554,7 +593,7 @@ if (-e $newfinalmap) {
 		#split xmap into _contig maps
 		$alignmolXmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_final_alignmol.xmap";
 		my $alignmolQmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_final_alignmol_q.cmap";
-		my $alignmolRmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_final_alignmol_r.cmap";
+		$alignmolRmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_final_alignmol_r.cmap";
 		my $alignmolPrefix = "$splitprefix"."_fragileSiteRepaired_merged_final_alignmol_contig";
 		#mkpath("$alignmolDir/contigs") or die "ERROR: Cannot create output directory $inputs{output}/alignmol/contigs: $!\n";
 		# Usage: perl split_xmap_standalone.pl [xmap] [_q.cmap] [_r.cmap] [_contig prefix] [output folder]
@@ -569,7 +608,7 @@ if (-e $newfinalmap) {
 	}
 }
 else {
-	print "Skipping Step 11 final single molecule alignments. Input BNX and/or Final merged fragileSiteRepaired CMAP not found\n";
+	print "Skipping Step 11 final single molecule alignments. Input BNX and/or Final merged fragileSiteRepaired CMAP not found\n\n";
 }
 
 # Step 12: re-score final BED file if needed
@@ -588,7 +627,7 @@ if (-e $newfinalmap && -e $newBED) {
 		my $oldBED = $newBED;
 		$newBED = "$inputs{output}/".basename($scoredBED);
 		
-		$cmd = "perl $scriptspath/scoreStitchPositionsBED_v3.pl --bed $oldBED --xmap $alignreffinalXmap --qcmap $alignreffinalQcmap --rcmap $alignreffinalRcmap --alignmol $alignmolXmap --n $cpuCount --output $inputs{output}/scoreBED/ > $inputs{output}/scoreBED/".basename($newBED,".bed")."_log.txt 2>&1";
+		$cmd = "perl $scriptspath/scoreStitchPositionsBED_v4.pl --bed $oldBED --xmap $alignreffinalXmap --qcmap $alignreffinalQcmap --rcmap $alignreffinalRcmap --alignmolxmap $alignmolXmap --alignmolrcmap $alignmolRmap --n $cpuCount --output $inputs{output}/scoreBED/ > $inputs{output}/scoreBED/".basename($newBED,".bed")."_log.txt 2>&1";
 		print "\n\tRunning command: $cmd\n\n";
 		system($cmd);
 		print "\n"; 
@@ -604,7 +643,7 @@ if (-e $newfinalmap && -e $newBED) {
 	}
 }
 else {
-	print "Skipping Step 12. Final merged fragileSiteRepaired CMAP and/or final BED not found\n";
+	print "Skipping Step 12. Final merged fragileSiteRepaired CMAP and/or final BED not found\n\n";
 }
 
 
@@ -709,7 +748,7 @@ if (-e "$dir/$script") {
 	
 }
 else {
-	print "Skipping Step 13: perl script calc_cmap_stats.pl not found at $dir/$script\n"; }
+	print "WARNING: Skipping Step 13: perl script calc_cmap_stats.pl not found at $dir/$script\n\n"; }
 print "\n";
 
 
@@ -791,7 +830,7 @@ sub sortBEDandCount {
 			push (@AoA, [$s[0],$s[1],$s[2],$s[3], $s[4],$s[5],$s[6],$s[7],$s[8],$s[9]]);
 		}
 		else {
-			push (@AoA, [$s[0],$s[1],$s[2],$s[3], $s[4],$s[5],$s[6],$s[7],$s[8],$s[9]]);
+			push (@AoA, [$s[0],$s[1],$s[2],$s[3], $s[4],$s[5],$s[6],$s[7],$s[8]]);
 		}
 		if ($s[3] =~ m/Type/i) {
 			$typeCount{$s[3]}++;
@@ -918,5 +957,48 @@ sub unique {
   my %seen;
   return grep { !$seen{$_}++ } @_;
 }
+
+
+sub extractErr {
+	my $fileIn = shift;
+	my @errArr;
+	open FILE, "<$fileIn" or die "ERROR: Could not open $fileIn: $!\n";
+	while (<FILE>) {
+		if ($_ =~ /^#/) {
+			next;
+		}
+		chomp($_);
+		push @errArr, $_;
+	}
+	close FILE;
+	
+	my %errHash;
+	#Iteration	FP(/100kb)	FN(rate)	sf	sd	bpp	res(pixels)	Maps	Log10LR(/Maps)	GoodMaps	log10LR(/GoodMaps)	bppSD	FPrate	sr	se	LabelDensity(/100kb)	resSD(pixels)	mres(x500bp)	mresSD(x500bp)
+	my @header = split("\t",$errArr[0]);
+	my @params = split("\t",$errArr[-1]);
+	for (my $i=0; $i<scalar(@params); $i++) {
+		my $head = $header[$i];
+		my $param = $params[$i];
+		if (defined $head) { chomp($head); } 
+		if (defined $param) { chomp($param); }
+		#load into hash
+		$errHash{$head} = $param;
+	}
+	
+	return \%errHash;
+} 
+	
+sub Usage {
+	# Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --err <alignmol_merge.err> [--ref <reference.cmap>] [--threshold <minimum score threshold below which to cut stitched maps>] [--maxlab <max_label_gap_tolerence = 1>] [--maxfill <max basepairs to fill between contigs = 30000>] [--wobble <fragile site wobble in bp = 30000>] [--seq <sequence bp +/- fragile site to print in final BED = 50>] [--force <overwrite output folder>] [--n <number of CPU cores>] [--j <number of parallel jobs>] [--optArgs <optArguments_human.xml>] [--runSV <enable run SV detection>] [--bnx <input.bnx to run alignmol>] [--break <break maps at stitch locations with score below threshold>]
+	print "\n\nUsage: perl fragileSiteRepair.pl [OPTIONS]\n\n";
+	print "\t--fasta <reference.fasta>; required\n";
+	print "\t\t-OR-\n";
+	print "\t--bed <reference_fsites.bed>; required\n";
+	
+	
+	
+	
+}
+
 	
 	

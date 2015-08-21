@@ -1,11 +1,11 @@
 #!/usr/bin/perl
 
-# Usage: perl calcFragileSites.pl <input FASTA> [output.bed] [sequence buffer in bp]
+# Usage: perl calcFragileSites.pl --fasta <input FASTA> [--output <output.bed>] [--buffer <sequence buffer in bp>] [--random]
 # Example: perl calcFragileSites.pl hg19_chromosome.fa hg19_chromosome_bbspqi.bed 500
 
 use strict;
 use warnings;
-use Cwd qw(realpath);
+use Cwd qw(realpath abs_path);
 use File::Basename;
 #use File::Copy;
 use File::Path qw(make_path);
@@ -13,12 +13,26 @@ use Bio::Seq;
 use Bio::SeqIO;
 #use List::MoreUtils qw(uniq);
 use Data::Dumper;
+use Getopt::Long qw(:config bundling); 
 
 # usage statement
-if( scalar(@ARGV)<1 or scalar(@ARGV)>3 ) {
-	print "usage: $0 <input.fa> [output.bed] [sequence buffer in bp]\n"; 
-	exit 0; 
+my %inputs = (); 
+GetOptions( \%inputs, 'fasta=s', 'output=s', 'buffer=i', 'random'); 
+if ( !exists $inputs{fasta} ) {
+	print "Usage: perl calcFragileSites.pl --fasta <input FASTA> [--output <output.bed>] [--buffer <sequence buffer in bp>]\n\n";
+	exit 0;
 }
+foreach my $key ("fasta","output") {
+	if (exists $inputs{$key} and $inputs{$key} =~ /[a-z]/i) {
+		$inputs{$key} = abs_path($inputs{$key});
+	}
+}
+
+
+#if( scalar(@ARGV)<1 or scalar(@ARGV)>3 ) {
+	#print "usage: $0 <input.fa> [output.bed] [sequence buffer in bp]\n"; 
+	#exit 0; 
+#}
 
 print "\n";
 print qx/ps -o args $$/;
@@ -32,9 +46,17 @@ my $bp_t4 = 500; #maximum distance between nicks on same strands (moving away fr
 my $bp_t5 = 50; #maximum distance between nicks on same strands (moving in the same direction) to count as TypeV
 my $bp_t6 = 500; #maximum distance between nicks of more than 1 strand type to count as TypeVI
 
-my @enzymes = ("GCTCTTC"); #BspQI
-#my @enzymes = ("CACGAG"); #BssSI
-#my @enzymes = ("GCTCTTC","CACGAG"); #BspQI and BssSI dual-nick
+my @enzymes;
+#testing purposes for randomness
+if (exists $inputs{random}) { 
+	my @chars = ("A","C","T","G");
+	$enzymes[0] .= $chars[rand @chars] for 1..7;
+}
+else {
+	@enzymes = ("GCTCTTC"); #BspQI
+	#@enzymes = ("CACGAG"); #BssSI
+	#@enzymes = ("GCTCTTC","CACGAG"); #BspQI and BssSI dual-nick
+}
 
 #my $enzyme1 = "GCTCTTC"; #BspQI... motif is actually "GCTCTTCN" with nicking occuring after the "N"
 #my $enzyme2 = "CACGAG"; #BssSI
@@ -47,25 +69,25 @@ my $fsitesCountTotal=0;
 print "\n";
 
 # check fasta input variable
-if (defined $ARGV[0] && -e $ARGV[0]) {
-	$fasta = realpath($ARGV[0]);
+if (defined $inputs{fasta} && -e $inputs{fasta}) {
+	$fasta = realpath($inputs{fasta});
 	#print "Calculating fragiles sites for FASTA file: $fasta\n";
 	$basename = basename($fasta);
 	$basename =~ s/\.[^.]+$//;
 	#print "\tFile filename = $basename\n";
 	}
 else {
-	die "ERROR: Input FASTA file $ARGV[0] not provided or does not exist! $!\n";
+	die "ERROR: Input FASTA file $inputs{fasta} not provided or does not exist! $!\n";
 } 
 print "Input FASTA: $fasta\n";	
 
 # check optional output variable
-if( defined $ARGV[1] and !-d $ARGV[1]) { 
-	$outputfile = realpath($ARGV[1]); 
+if( defined $inputs{output} and !-d $inputs{output}) { 
+	$outputfile = realpath($inputs{output}); 
 } 
-elsif ( defined $ARGV[1] and -d $ARGV[1]) {
-	#$outputfile = $ARGV[1]."/".$basename."_".uc($enzyme1)."_".uc($enzyme2).".fsites.withSeqs.bed";
-	$outputfile = $ARGV[1]."/".$basename."_".uc(join("_",@enzymes));
+elsif ( defined $inputs{output} and -d $inputs{output}) {
+	#$outputfile = $inputs{output}."/".$basename."_".uc($enzyme1)."_".uc($enzyme2).".fsites.withSeqs.bed";
+	$outputfile = $inputs{output}."/".$basename."_".uc(join("_",@enzymes));
 }
 else {
 	#$outputfile = realpath("./$basename.".uc($enzyme1)."_".uc($enzyme2).".fsites.withSeqs.bed");  #if output file not given use $basename as prefix 
@@ -78,10 +100,10 @@ if( -e $outputfile ) {
 #check optional input sequence buffer variable
 my $getSeq=0;
 my $buffer=50;	
-if (defined $ARGV[2]) {
+if (defined $inputs{buffer}) {
 	$getSeq=1;
-	if (int($ARGV[2])>0) {
-		$buffer = int($ARGV[2]); 
+	if (int($inputs{buffer})>0) {
+		$buffer = int($inputs{buffer}); 
 	}
 	$outputfile = $outputfile."_fsites.withSeqs".$buffer.".bed";
 }
@@ -89,17 +111,17 @@ else {
 	$outputfile = $outputfile."_fsites.bed";
 }
 
-print "Calculating potential fragile sites for $ARGV[0]\n";
+print "Calculating potential fragile sites for $inputs{fasta}\n";
 print "Using enzyme(s): ".join(" ",@enzymes)."\n\n"; 
 
 print "Output BED: $outputfile\n\n";
 
 print "\tTypeI fragile site threashold (bp): $bp_t1\n";
 print "\tTypeII fragile site threashold (bp): $bp_t2\n";
-print "\tTypeIII fragile site threashold (bp): $bp_t3\n";
-print "\tTypeIV fragile site threashold (bp): $bp_t4\n";
+#print "\tTypeIII fragile site threashold (bp): $bp_t3\n";
+#print "\tTypeIV fragile site threashold (bp): $bp_t4\n";
 print "\tTypeV fragile site threashold (bp): $bp_t5\n";
-print "\tTypeVI fragile site threashold (bp): $bp_t6\n";
+#print "\tTypeVI fragile site threashold (bp): $bp_t6\n";
 print "\n";
 
 if ($getSeq==1) {
@@ -188,7 +210,7 @@ while((my $seqobj = $seqin->next_seq())) {   #for each sequence in FASTA (e.g. e
 		
 		#if getting fasta sequences, extract sequence
 		if ($getSeq==1) {
-			#extract sequence +/- $ARGV[2] or 500bp			
+			#extract sequence +/- $inputs{buffer} or 500bp			
 			my $start = $s[1]-$buffer;
 			if ($start <1) {
 				$start = 1;
@@ -258,26 +280,26 @@ sub find_nick_sites{
 					$result{$current_loc} = 1;	#records position at base "G" GCTCTTCN
 				}
 				else {
-					$result{$current_loc} = 3;
+					$result{$current_loc} = 1;
 				}
 			}
 		$current_loc = index($seq, $enzyme, $current_loc + 1);
 		}	
 		
-		# find the reverse(enzyme)) in the forward strand 5' -> 3' 
+		## find the reverse(enzyme)) in the forward strand 5' -> 3' 
 		my $enzyme_rc = reverse($enzyme);
-		$current_loc = index($seq, $enzyme_rc, 0);
-		while ($current_loc != -1){
-			if($current_loc + $elength < $slength){
-				if (!exists $result{$current_loc + $elength}) {
-					$result{$current_loc + $elength} = 2;	#records position at base "G" NCTTCTCG
-				}
-				else {
-					$result{$current_loc + $elength} = 3;
-				}
-			}
-			$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
-		}
+		#$current_loc = index($seq, $enzyme_rc, 0);
+		#while ($current_loc != -1){
+			#if($current_loc + $elength < $slength){
+				#if (!exists $result{$current_loc + $elength}) {
+					#$result{$current_loc + $elength} = 2;	#records position at base "G" NCTTCTCG
+				#}
+				#else {
+					#$result{$current_loc + $elength} = 3;
+				#}
+			#}
+			#$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
+		#}
 		
 		# Find the rc(first enzyme) in the forward strand, staring from the first nucleotide!!!
 		$enzyme_rc =~ tr/ACGTUN/TGCAAN/;
@@ -288,27 +310,27 @@ sub find_nick_sites{
 					$result{$current_loc + $elength} = -1;	#records position at base "C" NGAAGAGC
 				}
 				else {
-					$result{$current_loc + $elength} = 3;
+					$result{$current_loc + $elength} = -1;
 				}
 			}
 			$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
 		}
 		
-		# Find the complement(enzyme) in the forward strand 5' -> 3', starting from the first nucleotide!!!		
-		$enzyme_rc = $enzyme;
-		$enzyme_rc =~ tr/ACGTUN/TGCAAN/;
-		$current_loc = index($seq, $enzyme_rc, 0);
-		while ($current_loc != -1){
-			if($current_loc + $elength < $slength){
-				if (!exists $result{$current_loc}) {
-					$result{$current_loc} = -2;	#records position at base "C" CGAGAAG
-				}
-				else {
-					$result{$current_loc} = 3;
-				}
-			}
-			$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
-		}
+		## Find the complement(enzyme) in the forward strand 5' -> 3', starting from the first nucleotide!!!		
+		#$enzyme_rc = $enzyme;
+		#$enzyme_rc =~ tr/ACGTUN/TGCAAN/;
+		#$current_loc = index($seq, $enzyme_rc, 0);
+		#while ($current_loc != -1){
+			#if($current_loc + $elength < $slength){
+				#if (!exists $result{$current_loc}) {
+					#$result{$current_loc} = -2;	#records position at base "C" CGAGAAG
+				#}
+				#else {
+					#$result{$current_loc} = 3;
+				#}
+			#}
+			#$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
+		#}
 		
 		#print "\t\tNickase Enzyme: $enzyme\n";
 		#for my $key (sort{$b <=> $a} keys %classCount) {

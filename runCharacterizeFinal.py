@@ -148,6 +148,7 @@ def runCharacterize(cwd, rabin, refcmap, contigdir, contigbase, runaligns, xmapp
         if hasattr(util, "InitStatus") : #if old version, skip
             util.InitStatus(os.path.join(contigdir, "status.xml")) #needed otherwise call to status_log fails
         charmod = cm.Characterize(varsP, 1) #create Characterize object from CharacterizeModule -- this also calls generateJobList
+        xmappath = charmod.xmapTarget #set in Characterize.generateJobList
         charmod.runJobs()
     else :
         #varsP.contigAlignTarget = contigdir #this is dir in which _q and _r cmaps must be located -- contigdir is from cmap; this should be from xmap
