@@ -441,7 +441,8 @@ sub process_bed {
 		my %molrcmapEntry = %{get_hash_from_arr_json_by_format($molrcmapEntry_ref, \@cmap_format)};
 		if ($molrcmapEntry{'CMapId'} eq $genomeMapId) {
 			if ( ($molrcmapEntry{'SiteID'} < $matchPairs{$bedStartLabelId}) || ($molrcmapEntry{'SiteID'} > $matchPairs{$bedEndLabelId}) ) {
-				$genomeMapAvgCov = $genomeMapAvgCov + $molrcmapEntry{'Coverage'};				
+				$genomeMapAvgCov = $genomeMapAvgCov + $molrcmapEntry{'Coverage'};	
+				$count++;			
 			}
 		}
 	}
@@ -561,8 +562,11 @@ sub process_bed {
 												
 								if ($conf > 10) { $conf = 10; }
 								if ($conf < 2) { next MOLLOOP; }
-												
-								push @allIds, $molxmapEntry{'QryContigID'};
+								
+								my %allIdsHash = map { $_ => 1 } @allIds;
+								if( !exists($allIdsHash{$molxmapEntry{'QryContigID'}}) ) {								
+									push @allIds, $molxmapEntry{'QryContigID'};
+								}
 												
 								if (!exists $confHash{$molxmapEntry{'QryContigID'}}) {										
 									$confHash{$molxmapEntry{'QryContigID'}} = $conf;

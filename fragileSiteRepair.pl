@@ -142,6 +142,9 @@ if ( exists $inputs{ref} ) { print "\toptArguments for Characterization: $inputs
 if (exists $inputs{bnx}) {print "Input BNX: $inputs{bnx}\n";} else {print "Input BNX: not provided\n";}
 if (exists $inputs{err}) { print "Input alignmol_merge ERR: $inputs{err}\n"; }
 if (exists $inputs{bnx} && !exists $inputs{err}) { print "\tWARNING: alignmol ERR file not provided! Skipping single molecule alignments.\n"; }
+else { print "\tUsing -endoutlier $inputs{endoutlier} for single molecule alignments\n"; }
+
+
 if (exists $inputs{bnx} && exists $inputs{ref} && exists $inputs{ref} && exists $inputs{err} && defined $inputs{break}) {print "\tBreaking maps at stitchPostions with score <$threshold\n";}
 print "Output folder: $inputs{output}\n\n";
 print "Maximum labels between maps: $inputs{maxlab}\n";
@@ -378,9 +381,10 @@ foreach my $bedFile (@beds) {
 	}
 	close BEDFILE; 
 }
-my ($bedOut_ref, $typeCount_ref) = sortBEDandCount(\@bedOut);
+my ($bedOut_ref, $typeCount_ref, $typeConf_ref) = sortBEDandCount(\@bedOut);
 @bedOut = @$bedOut_ref;
 my %typeCount = %$typeCount_ref;
+my %typeConf = %$typeConf_ref;
 my $stitchCount = scalar(@bedOut);
 print BEDOUT join("\n",@bedOut);
 close BEDOUT; 
@@ -454,7 +458,7 @@ if (defined $inputs{bnx} && exists $inputs{bnx} && defined $inputs{err} && exist
 	my %errHash = %$errHash_ref;	
 	# $ cd /home/palak; /home/palak/tools/RefAligner.mic -ref /home/palak/data/HuRef_fragileSiteRepair_IrysView/HuRef_105x_hg19/output/contigs/exp_refineFinal1/EXP_REFINEFINAL1.cmap -o /home/palak/data/HuRef_fragileSiteRepair_IrysView/HuRef_105x_hg19/output/contigs/exp_refineFinal1/alignmol/EXP_REFINEFINAL1_1 -i /home/palak/data/HuRef_fragileSiteRepair_IrysView/HuRef_105x_hg19/output/all_1_of_30.bnx -f -stdout -stderr -maxthreads 240 -usecolor 1 -FP 1.5 -FN 0.15 -sd 0. -sf 0.2 -sr 0.03 -res 3.3 -output-veto-filter intervals.txt$ -T 1e-9 -usecolor 1 -S -1000 -biaswt 0 -res 3.3 -resSD 0.75 -outlier 0.0001 -extend 1 -BestRef 1 -maptype 1 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -maxmem 7
 	#$cmd = "cd $alignmolDir; ~/tools/RefAligner -f -ref $finalmap -o $splitprefix"."_fragileSiteRepaired_merged_alignmol -i $inputs{bnx} -maxthreads $cpuCount -maxmem ".($mem)." -usecolor 1 -FP 1.5 -FN 0.15 -sd 0. -sf 0.2 -sr 0.03 -res 3.3 -output-veto-filter intervals.txt\$ -T 1e-9 -usecolor 1 -S -1000 -biaswt 0 -res 3.3 -resSD 0.75 -outlier 0.0001 -extend 1 -BestRef 1 -maptype 1 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -stdout -stderr";
-	$cmd = "cd $alignmolDir; ~/tools/RefAligner -i $inputs{bnx} -o $splitprefix"."_fragileSiteRepaired_merged_alignmol -ref $finalmap -f -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP $errHash{'FP(/100kb)'} -FN $errHash{'FN(rate)'} -sd $errHash{'sd'} -sf $errHash{'sf'} -sr $errHash{'sr'} -res 3.3 -bpp $errHash{'bpp'} -output-veto-filter intervals.txt\$ -T 1e-10 -L 130 -nosplit 2 -biaswt 0 -res 3.3 -resSD 0.75 -extend 1 -BestRef 1 -maptype 0 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -deltaX 4 -deltaY 6 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -outlier 0.00001 -endoutlier $inputs{endoutlier} -outlierMax 40. -cres 5.4 3 0.1 -MaxSE 0.5 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -maxmem $mem";
+	$cmd = "cd $alignmolDir; ~/tools/RefAligner -i $inputs{bnx} -o $splitprefix"."_fragileSiteRepaired_merged_alignmol -ref $finalmap -f -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP $errHash{'FP(/100kb)'} -FN $errHash{'FN(rate)'} -sd $errHash{'sd'} -sf $errHash{'sf'} -sr $errHash{'sr'} -res $errHash{'res(pixels)'} -bpp $errHash{'bpp'} -output-veto-filter intervals.txt\$ -T 1e-10 -L 130 -nosplit 2 -biaswt 0 -resSD 0.75 -extend 1 -BestRef 1 -maptype 0 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -deltaX 4 -deltaY 6 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -outlier 0.00001 -endoutlier $inputs{endoutlier} -outlierMax 40. -cres 5.4 3 0.1 -MaxSE 0.5 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -maxmem $mem";
 	
 	print "\tRunning command: $cmd\n\n";
 	system($cmd);
@@ -584,7 +588,7 @@ if (-e $newfinalmap) {
 		my %errHash = %$errHash_ref;	
 		$alignmolDir = abs_path("$inputs{output}/alignmol_final");
 		#$cmd = "cd $alignmolDir; ~/tools/RefAligner -f -ref $newfinalmap -o $splitprefix"."_fragileSiteRepaired_merged_final_alignmol -i $inputs{bnx} -maxthreads $cpuCount -maxmem ".($mem)." -usecolor 1 -FP 1.5 -FN 0.15 -sd 0. -sf 0.2 -sr 0.03 -res 3.3 -output-veto-filter intervals.txt\$ -T 1e-9 -usecolor 1 -S -1000 -biaswt 0 -res 3.3 -resSD 0.75 -outlier 0.0001 -extend 1 -BestRef 1 -maptype 1 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -stdout -stderr";
-		$cmd = "cd $alignmolDir; ~/tools/RefAligner -i $inputs{bnx} -o $splitprefix"."_fragileSiteRepaired_merged_final_alignmol -ref $newfinalmap -f -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP $errHash{'FP(/100kb)'} -FN $errHash{'FN(rate)'} -sd $errHash{'sd'} -sf $errHash{'sf'} -sr $errHash{'sr'} -res 3.3 -bpp $errHash{'bpp'} -output-veto-filter intervals.txt\$ -T 1e-10 -L 130 -nosplit 2 -biaswt 0 -res 3.3 -resSD 0.75 -extend 1 -BestRef 1 -maptype 0 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -deltaX 4 -deltaY 6 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -outlier 0.00001 -endoutlier $inputs{endoutlier} -outlierMax 40. -cres 5.4 3 0.1 -MaxSE 0.5 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -maxmem $mem";
+		$cmd = "cd $alignmolDir; ~/tools/RefAligner -i $inputs{bnx} -o $splitprefix"."_fragileSiteRepaired_merged_final_alignmol -ref $newfinalmap -f -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP $errHash{'FP(/100kb)'} -FN $errHash{'FN(rate)'} -sd $errHash{'sd'} -sf $errHash{'sf'} -sr $errHash{'sr'} -res $errHash{'res(pixels)'} -bpp $errHash{'bpp'} -output-veto-filter intervals.txt\$ -T 1e-10 -L 130 -nosplit 2 -biaswt 0 -resSD 0.75 -extend 1 -BestRef 1 -maptype 0 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -deltaX 4 -deltaY 6 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -outlier 0.00001 -endoutlier $inputs{endoutlier} -outlierMax 40. -cres 5.4 3 0.1 -MaxSE 0.5 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -maxmem $mem";
 		
 		print "\tRunning command: $cmd\n\n";
 		system($cmd);
@@ -677,12 +681,13 @@ while (<ORIGBEDFILE>) {
 		push @origBed, $_;
 }
 close ORIGBEDFILE; 
-my ($origBedOut_ref, $origTypeCount_ref) = sortBEDandCount(\@origBed);
+my ($origBedOut_ref, $origTypeCount_ref, $origTypeConf_ref) = sortBEDandCount(\@origBed);
 my %origTypeCount = %$origTypeCount_ref;
+my %origTypeConf = %$origTypeConf_ref;
 my $origCount = scalar(@origBed);
 print "Total potential fragile sites: $origCount\n";
 foreach my $type (sort keys %origTypeCount) {
-	print "\t$type: $origTypeCount{$type}\n";
+	print "\t$type: $origTypeCount{$type} AvgConf: $origTypeConf{$type}\n";
 }
 
 #get stats of scored BED
@@ -697,19 +702,20 @@ if (-e $newBED) {
 		push @newBed, $_;
 	}
 	close NEWBEDFILE; 
-	my ($newBedOut_ref, $newTypeCount_ref) = sortBEDandCount(\@newBed);
+	my ($newBedOut_ref, $newTypeCount_ref, $newTypeConf_ref) = sortBEDandCount(\@newBed);
 	my %newTypeCount = %$newTypeCount_ref;
+	my %newTypeConf = %$newTypeConf_ref;
 	my $newCount = scalar(@newBed);
 	
 	print "Total fragile sites repaired (stitched) and scored: $newCount\n";
 	foreach my $type (sort keys %newTypeCount) {
-		print "\t$type: $typeCount{$type}\n";
+		print "\t$type: $newTypeCount{$type} AvgConf: $newTypeConf{$type}\n";
 	}
 }
 else {
 	print "Total fragile sites repaired (stitched): $stitchCount\n";
 	foreach my $type (sort keys %typeCount) {
-		print "\t$type: $typeCount{$type}\n";
+		print "\t$type: $typeCount{$type} AvgConf: $typeConf{$type}\n";
 	}
 }
 print "\n";
@@ -821,6 +827,7 @@ sub sortBEDandCount {
 	#create array of arrays
 	my @AoA;
 	my %typeCount;
+	my %typeConf;
 	foreach my $line (@bedIn) {
 		chomp($line);
 		#print "$line\n";
@@ -835,7 +842,18 @@ sub sortBEDandCount {
 		if ($s[3] =~ m/Type/i) {
 			$typeCount{$s[3]}++;
 		}
+		if (!exists $typeConf{$s[3]}) {
+			$typeConf{$s[3]} = $s[4];
+		}
+		else {
+			$typeConf{$s[3]} += $s[4];
+		}
 	}
+	foreach my $type (sort keys %typeConf) {
+		$typeConf{$type} = $typeConf{$type} / $typeCount{$type};
+		$typeConf{$type} = (sprintf "%.2f", $typeConf{$type});
+	}
+	
 	# my @sortedAoA = map  { $_->[0] }
 					# sort { $a->[0] <=> $b->[0] }
 					# map  { [ $_, $_->[0] ] }
@@ -862,7 +880,7 @@ sub sortBEDandCount {
 			# push @bedOut, $lineOut;
 		# }
 	# }
-	return (\@bedOut,\%typeCount);
+	return (\@bedOut,\%typeCount,\%typeConf);
 }
 
 sub findBED {
