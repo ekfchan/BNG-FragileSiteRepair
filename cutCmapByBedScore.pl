@@ -245,25 +245,44 @@ for (my $i=0; $i<scalar(@bedIn); $i++) {
 		my $qryStart = $s[0]; $qryStart = $qryStart/1000;
 		my $qryEnd = $s[1];	$qryEnd = $qryEnd/1000;
 		
-		my $breakpoint = 0;
+		#my $breakpoint = 0;
+		my @breakpoints;
+		
+		# get breakpoint locations
 		if (($qryStart == $qryEnd)) {
-			$breakpoint = $qryStart;
+			#$breakpoint = $qryStart;
+			push @breakpoints, $qryStart;
 		}
 		elsif ($qryEnd == 0) {
-			$breakpoint = $qryStart;
+			#$breakpoint = $qryStart;
+			push @breakpoints, $qryStart;
 		}
 		elsif ($qryStart == 0) {
-			$breakpoint = $qryEnd;
+			#$breakpoint = $qryEnd;
+			push @breakpoints, $qryEnd;
 		}		
 		else {
-			$breakpoint = "$qryStart $qryEnd";
+			#$breakpoint = "$qryStart $qryEnd";
+			push @breakpoints, $qryStart;
+			push @breakpoints, $qryEnd;
 		}
 		
+		# push breakpoints to hash	
+		my $line = "";	
 		if ( !exists $breakPoints{$qryId} ) {
-			$breakPoints{$qryId} = $breakpoint;						
+			foreach (sort {$a<=>$b} @breakpoints) {
+				$line = $line." ".$_;
+			}
+			$breakPoints{$qryId} = $line;
 		}
 		else {
-			$breakPoints{$qryId} = $breakPoints{$qryId}." ".$breakpoint;
+			my $temp = $breakPoints{$qryId};
+			my @old = split(" ",$temp);
+			push @breakpoints, @old;
+			foreach (sort {$a<=>$b} @breakpoints) {
+				$line = $line." ".$_;
+			}
+			$breakPoints{$qryId} = $line;
 		}	
 		
 		#print breakpoints to BED

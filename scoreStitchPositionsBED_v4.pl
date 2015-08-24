@@ -15,7 +15,7 @@ use threads::shared;
 use Getopt::Long qw(:config bundling); 
 use JSON::XS;
 
-my $sharedmem = 1;
+my $sharedmem = 0;
 $| = 1; # set perl to flush buffer immediately after write out command
 
 my $startDateTime = DateTime->now;

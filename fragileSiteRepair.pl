@@ -4,7 +4,7 @@
 # If .bed file of fragile sites is not provided, an input (reference) fasta is expected, from which potential fragiles sites will be calculated. 
 # Assembly maps are stitched together based on alignments if the maps start and stop overlap a fragile site
 
-# Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --err <alignmol_merge.err> [--ref <reference.cmap>] [--threshold <minimum score threshold below which to cut stitched maps>] [--maxlab <max_label_gap_tolerence = 1>] [--maxfill <max basepairs to fill between contigs = 30000>] [--wobble <fragile site wobble in bp = 30000>] [--seq <sequence bp +/- fragile site to print in final BED = 50>] [--force <overwrite output folder>] [--n <number of CPU cores>] [--j <number of parallel jobs>] [--optArgs <optArguments_human.xml>] [--runSV <enable run SV detection>] [--bnx <input.bnx to run alignmol>] [--break <break maps at stitch locations with score below threshold>] [--endoutlier <Pvalue penalty for endoutlier = 0>]
+# Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --err <alignmol_merge.err> [--ref <reference.cmap>] [--threshold <minimum score threshold below which to cut stitched maps>] [--maxlab <max_label_gap_tolerence = 1>] [--maxfill <max basepairs to fill between contigs = 30000>] [--wobble <fragile site wobble in bp = 30000>] [--seq <sequence bp +/- fragile site to print in final BED = 50>] [--force <overwrite output folder>] [--n <number of CPU cores>] [--j <number of parallel jobs>] [--optArgs <optArguments_human.xml>] [--runSV <enable run SV detection>] [--bnx <input.bnx to run alignmol>] [--break <break maps at stitch locations with score below threshold>] [--endoutlier <Pvalue penalty for endoutlier = 1e-3>] [--aggressive <calculate TypeIII and TypeIV fragile sites>]
 
 use strict;
 use warnings;
@@ -34,7 +34,7 @@ my $mem = 32;
 # << usage statement and variable initialisation >>
 my %inputs = (); 
 $inputs{'force'}=0;
-GetOptions( \%inputs, 'fasta:s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'bed:s', 'seq:i', 'cmap:s', 'ref:s', 'n:i','j:i','optArgs:s', 'runSV', 'bnx:s', 'step:i', 'threshold:s', 'random', 'err:s', 'break', 'h|help', 'endoutlier:s'); 
+GetOptions( \%inputs, 'fasta:s', 'xmap=s', 'qcmap=s', 'rcmap=s', 'errbin=s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'bed:s', 'seq:i', 'cmap:s', 'ref:s', 'n:i','j:i','optArgs:s', 'runSV', 'bnx:s', 'step:i', 'threshold:s', 'random', 'err:s', 'break', 'h|help', 'endoutlier:s', 'aggressive'); 
 
 my $hasbed = 0; 
 my $getSeq = 0;
@@ -50,7 +50,9 @@ print qx/ps -o args $$/;
 print "\n";
 
 if ( (!exists $inputs{fasta} & !exists $inputs{bed}) | !exists $inputs{xmap} | !exists $inputs{qcmap} | !exists $inputs{rcmap} | !exists $inputs{errbin} | !exists $inputs{output} ) {
-	print "Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --err <alignmol_merge.err> [--ref <reference.cmap>] [--threshold <minimum score threshold below which to cut stitched maps>] [--maxlab <max_label_gap_tolerence = 1>] [--maxfill <max basepairs to fill between contigs = 30000>] [--wobble <fragile site wobble in bp = 30000>] [--seq <sequence bp +/- fragile site to print in final BED = 50>] [--force <overwrite output folder>] [--n <number of CPU cores>] [--j <number of parallel jobs>] [--optArgs <optArguments_human.xml>] [--runSV <enable run SV detection>] [--bnx <input.bnx to run alignmol>] [--break <break maps at stitch locations with score below threshold>]\n"; 
+	print "Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --err <alignmol_merge.err> [--ref <reference.cmap>] [--threshold <minimum score threshold below which to cut stitched maps>] [--maxlab <max_label_gap_tolerence = 1>] [--maxfill <max basepairs to fill between contigs = 30000>] [--wobble <fragile site wobble in bp = 30000>] [--seq <sequence bp +/- fragile site to print in final BED = 50>] [--force <overwrite output folder>] [--n <number of CPU cores>] [--j <number of parallel jobs>] [--optArgs <optArguments_human.xml>] [--runSV <enable run SV detection>] [--bnx <input.bnx to run alignmol>] [--break <break maps at stitch locations with score below threshold>] [--endoutlier <Pvalue penalty for endoutlier = 1e-3>] [--aggressive <calculate TypeIII and TypeIV fragile sites>]\n"; 
+	
+	print "\n";
 	exit 0; 
 }
 else {
@@ -107,7 +109,7 @@ else {
 	}
 		
 	if( exists $inputs{threshold} && looks_like_number($inputs{threshold}) ) { $threshold = $inputs{threshold}; } 
-	if( !exists $inputs{endoutlier} ) { $inputs{endoutlier} = 0; }
+	if( !exists $inputs{endoutlier} ) { $inputs{endoutlier} = "1e-3"; }
 }
 
 my $splitprefix = basename(abs_path($inputs{xmap}), ".xmap");
@@ -127,6 +129,9 @@ if( $hasbed==0 ) {
 	print "Input FASTA: $inputs{fasta}\n"; 
 	if ( $getSeq == 1) {
 		print "\tSequence bp +/- start/end of fragile to print to BED: $inputs{seq}\n";
+	}
+	if (exists $inputs{aggressive}) {
+		print "\tAggressive fragile site calculation enabled. Calculating TypeIII and TypeIV ...\n";
 	}
 }
 else { print "Input BED: $inputs{bed}\n";  }
@@ -191,7 +196,12 @@ if ( $hasbed==1 and -e $inputs{bed}) {
 else {
 	$stime = DateTime->now;
 	# Usage: perl calcFragilesSites.pl <input FASTA> [output.bed] [sequence bp +/- fsite to print out]
-	$cmd = "perl $scriptspath/calcFragileSites.pl --fasta $inputs{fasta} --output $inputs{output}";
+	if (exists $inputs{aggressive}) {
+		$cmd = "perl $scriptspath/calcFragileSites_aggressive.pl --fasta $inputs{fasta} --output $inputs{output}";
+	}
+	else {
+		$cmd = "perl $scriptspath/calcFragileSites.pl --fasta $inputs{fasta} --output $inputs{output}";
+	}
 	if ($getSeq == 1) {
 		$cmd = $cmd." --buffer $inputs{seq}";
 	}
@@ -447,6 +457,7 @@ my $alignreffinalRcmap = "$inputs{output}/alignref_final/$splitprefix"."_fragile
 
 # Step 7: align molecules to merged fragileSiteRepaired CMAP
 my $alignmolDir="";
+my $alignmolErr="";
 print "\n\n===Step 7: Run single molecule alignments against fragileSiteRepaired merged cmap ===\n\n";
 my $alignmolXmap="";
 my $alignmolRmap="";
@@ -468,6 +479,7 @@ if (defined $inputs{bnx} && exists $inputs{bnx} && defined $inputs{err} && exist
 	$alignmolXmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_alignmol.xmap";
 	my $alignmolQmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_alignmol_q.cmap";
 	$alignmolRmap = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_alignmol_r.cmap";
+	$alignmolErr = "$alignmolDir/$splitprefix"."_fragileSiteRepaired_merged_alignmol.err";
 	my $alignmolPrefix = "$splitprefix"."_fragileSiteRepaired_merged_alignmol_contig";
 	#mkpath("$alignmolDir/contigs") or die "ERROR: Cannot create output directory $inputs{output}/alignmol/contigs: $!\n";
 	# Usage: perl split_xmap_standalone.pl [xmap] [_q.cmap] [_r.cmap] [_contig prefix] [output folder]
@@ -584,7 +596,8 @@ if (-e $newfinalmap) {
 	#$alignmolXmap="";
 	if (defined $inputs{bnx} && exists $inputs{bnx} && defined $inputs{err} && exists $inputs{err}) {
 		print "Running alignment of $inputs{bnx} to $newfinalmap\n\n";
-		my $errHash_ref = extractErr($inputs{err});
+		#my $errHash_ref = extractErr($inputs{err});
+		my $errHash_ref = extractErr($alignmolErr);
 		my %errHash = %$errHash_ref;	
 		$alignmolDir = abs_path("$inputs{output}/alignmol_final");
 		#$cmd = "cd $alignmolDir; ~/tools/RefAligner -f -ref $newfinalmap -o $splitprefix"."_fragileSiteRepaired_merged_final_alignmol -i $inputs{bnx} -maxthreads $cpuCount -maxmem ".($mem)." -usecolor 1 -FP 1.5 -FN 0.15 -sd 0. -sf 0.2 -sr 0.03 -res 3.3 -output-veto-filter intervals.txt\$ -T 1e-9 -usecolor 1 -S -1000 -biaswt 0 -res 3.3 -resSD 0.75 -outlier 0.0001 -extend 1 -BestRef 1 -maptype 1 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -stdout -stderr";
