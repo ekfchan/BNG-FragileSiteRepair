@@ -116,7 +116,7 @@ my $splitprefix = basename(abs_path($inputs{xmap}), ".xmap");
 
 # Make sure dependency scripts exist
 my $scriptspath = abs_path(dirname($0));
-if (!-e "$scriptspath/calcFragileSites.pl" | !-e "$scriptspath/split_xmap_standalone.pl" | !-e "$scriptspath/gapFill.pl" | !-e "$scriptspath/extractFASTA_fromBED.pl" | !-e "$scriptspath/runCharacterizeFinal.py" | !-e "$scriptspath/callSV.pl" | !-e "$scriptspath/scoreStitchPositionsBED_v4.pl" | !-e "$scriptspath/cutCmapByBedScore.pl") {
+if (!-e "$scriptspath/calcFragileSites.pl" | !-e "$scriptspath/split_xmap_standalone.pl" | !-e "$scriptspath/gapFill.pl" | !-e "$scriptspath/extractFASTA_fromBED.pl" | !-e "$scriptspath/runCharacterizeFinal.py" | !-e "$scriptspath/callSV.pl" | !-e "$scriptspath/scoreStitchPositionsBED_v5.pl" | !-e "$scriptspath/cutCmapByBedScore.pl") {
 	die "ERROR: Dependency scripts not found at $scriptspath\n"; 
 }
 if( !-e $ENV{"HOME"}."/tools/RefAligner" | !-e $ENV{"HOME"}."/scripts/HybridScaffold/scripts/calc_cmap_stats.pl" | !-e $ENV{"HOME"}."/scripts/optArguments_human.xml" | !-e $ENV{"HOME"}."/scripts/runSV.py") {
@@ -509,7 +509,7 @@ if (defined $inputs{bnx} && exists $inputs{bnx} && -e $finalmap && exists $input
 	mkpath("$inputs{output}/scoreBED") or warn "WARNING: Cannot create output directory $inputs{output}/scoreBED: $!\nNext steps may fail...\n";
 	$scoredBED = $inputs{output}."/scoreBED/$scoredBED";
 	
-	$cmd = "perl $scriptspath/scoreStitchPositionsBED_v4.pl --bed $mergedBED --xmap $alignreffinalXmap --qcmap $alignreffinalQcmap --rcmap $alignreffinalRcmap --alignmolxmap $alignmolXmap --alignmolrcmap $alignmolRmap --n $cpuCount --output $inputs{output}/scoreBED/ > $inputs{output}/scoreBED/".basename($mergedBED,".bed")."_scored_log.txt 2>&1";
+	$cmd = "perl $scriptspath/scoreStitchPositionsBED_v5.pl --bed $mergedBED --xmap $alignreffinalXmap --qcmap $alignreffinalQcmap --rcmap $alignreffinalRcmap --alignmolxmap $alignmolXmap --alignmolrcmap $alignmolRmap --n $cpuCount --output $inputs{output}/scoreBED/ > $inputs{output}/scoreBED/".basename($mergedBED,".bed")."_scored_log.txt 2>&1";
 	print "\n\tRunning command: $cmd\n\n";
 	system($cmd);
 	print "\n"; 
@@ -644,7 +644,7 @@ if (-e $newfinalmap && -e $newBED) {
 		my $oldBED = $newBED;
 		$newBED = "$inputs{output}/".basename($scoredBED);
 		
-		$cmd = "perl $scriptspath/scoreStitchPositionsBED_v4.pl --bed $oldBED --xmap $alignreffinalXmap --qcmap $alignreffinalQcmap --rcmap $alignreffinalRcmap --alignmolxmap $alignmolXmap --alignmolrcmap $alignmolRmap --n $cpuCount --output $inputs{output}/scoreBED/ > $inputs{output}/scoreBED/".basename($newBED,".bed")."_log.txt 2>&1";
+		$cmd = "perl $scriptspath/scoreStitchPositionsBED_v5.pl --bed $oldBED --xmap $alignreffinalXmap --qcmap $alignreffinalQcmap --rcmap $alignreffinalRcmap --alignmolxmap $alignmolXmap --alignmolrcmap $alignmolRmap --n $cpuCount --output $inputs{output}/scoreBED/ > $inputs{output}/scoreBED/".basename($newBED,".bed")."_log.txt 2>&1";
 		print "\n\tRunning command: $cmd\n\n";
 		system($cmd);
 		print "\n"; 
@@ -788,7 +788,7 @@ if (defined $inputs{runSV}) {
 		
 		if (-e $map && -e $errbin) {
 			# Usage: callSV.pl --ref <reference.cmap> --cmap <input.cmap> --errbin <input.errbin> --optarg <optArguments.xml> --outdir <output_folder> [--prefix <contig_prefix>] [--mres <pixels_to_reduce_ref> [--force]
-			$cmd = "perl callSV.pl --ref $inputs{ref} --cmap $map --errbin $errbin --optarg $inputs{optArgs} --outdir $inputs{output}/alignref_final_sv --mres $mres --n $cpuCount --prefix $splitprefix"."_fragileSiteRepaired_merged_final";
+			$cmd = "perl $scriptspath/callSV.pl --ref $inputs{ref} --cmap $map --errbin $errbin --optarg $inputs{optArgs} --outdir $inputs{output}/alignref_final_sv --mres $mres --n $cpuCount --prefix $splitprefix"."_fragileSiteRepaired_merged_final";
 			if ($inputs{force} eq 1) {$cmd = $cmd." --force";}
 			print "\tRunning command: $cmd\n\n";
 			system($cmd);
