@@ -1099,7 +1099,9 @@ sub Usage {
 	print "\n";
 	print "\t--n <CPU cores> : Maximum number of CPU cores/threads to use. Default: nproc\n";
 	print "\t--j <number jobs> : Maximum number of parallel jobs. Default: nproc/6\n";
-	
+	print "\n";
+	print "\t--h : Display this help menu\n";	
+
 	print "\n";
 }
 
