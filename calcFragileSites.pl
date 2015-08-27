@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 
-# Usage: perl calcFragileSites.pl --fasta <input FASTA> [--output <output.bed>] [--buffer <sequence buffer in bp>] [--random]
-# Example: perl calcFragileSites.pl hg19_chromosome.fa hg19_chromosome_bbspqi.bed 500
+# Usage: perl calcFragileSites.pl --fasta <input FASTA> [--output <output.bed>] [--buffer <sequence buffer in bp>] [--random] [--enzyme <sequence to use to calculate fragile sites> [--agressive <calculate TypeIII and TypeIV fragile sites>]]
 
 use strict;
 use warnings;
@@ -17,9 +16,9 @@ use Getopt::Long qw(:config bundling);
 
 # usage statement
 my %inputs = (); 
-GetOptions( \%inputs, 'fasta=s', 'output=s', 'buffer=i', 'random'); 
+GetOptions( \%inputs, 'fasta=s', 'output=s', 'buffer=i', 'random', 'enzyme:s', 'aggressive'); 
 if ( !exists $inputs{fasta} ) {
-	print "Usage: perl calcFragileSites.pl --fasta <input FASTA> [--output <output.bed>] [--buffer <sequence buffer in bp>]\n\n";
+	print "Usage: perl calcFragileSites.pl --fasta <input FASTA> [--output <output.bed>] [--buffer <sequence buffer in bp>] [--random] [--enzyme <sequence to use to calculate fragile sites> [--agressive <calculate TypeIII and TypeIV fragile sites>]]\n\n";
 	exit 0;
 }
 foreach my $key ("fasta","output") {
@@ -53,7 +52,8 @@ if (exists $inputs{random}) {
 	$enzymes[0] .= $chars[rand @chars] for 1..7;
 }
 else {
-	@enzymes = ("GCTCTTC"); #BspQI
+	push @enzymes, $inputs{enzyme};
+	#@enzymes = ("GCTCTTC"); #BspQI
 	#@enzymes = ("CACGAG"); #BssSI
 	#@enzymes = ("GCTCTTC","CACGAG"); #BspQI and BssSI dual-nick
 }
@@ -116,13 +116,26 @@ print "Using enzyme(s): ".join(" ",@enzymes)."\n\n";
 
 print "Output BED: $outputfile\n\n";
 
-print "\tTypeI fragile site threashold (bp): $bp_t1\n";
-print "\tTypeII fragile site threashold (bp): $bp_t2\n";
-#print "\tTypeIII fragile site threashold (bp): $bp_t3\n";
-#print "\tTypeIV fragile site threashold (bp): $bp_t4\n";
-print "\tTypeV fragile site threashold (bp): $bp_t5\n";
-#print "\tTypeVI fragile site threashold (bp): $bp_t6\n";
-print "\n";
+if ($inputs{aggressive}) {
+	print "Aggressive fragile site calculation enabled. Calculating TypeIII and TypeIV...\n";
+
+	print "\tTypeI fragile site threashold (bp): $bp_t1\n";
+	print "\tTypeII fragile site threashold (bp): $bp_t2\n";
+	print "\tTypeIII fragile site threashold (bp): $bp_t3\n";
+	print "\tTypeIV fragile site threashold (bp): $bp_t4\n";
+	print "\tTypeV fragile site threashold (bp): $bp_t5\n";
+	print "\tTypeVI fragile site threashold (bp): $bp_t6\n";
+	print "\n";
+}
+else {
+	print "\tTypeI fragile site threashold (bp): $bp_t1\n";
+	print "\tTypeII fragile site threashold (bp): $bp_t2\n";
+	#print "\tTypeIII fragile site threashold (bp): $bp_t3\n";
+	#print "\tTypeIV fragile site threashold (bp): $bp_t4\n";
+	print "\tTypeV fragile site threashold (bp): $bp_t5\n";
+	#print "\tTypeVI fragile site threashold (bp): $bp_t6\n";
+	print "\n";
+}
 
 if ($getSeq==1) {
 	print "\tExtracting sequences +/- $buffer"."bp from fragile site start/end positions\n";
@@ -157,7 +170,13 @@ while((my $seqobj = $seqin->next_seq())) {   #for each sequence in FASTA (e.g. e
 	
 	#my %result = find_nick_sites($seq,$enzyme1,$enzyme2);
 	#my %result = find_nick_sites($seq,$enzyme1);	
-	my %result = find_nick_sites($seq,\@enzymes);
+	my %result;
+	if ($inputs{aggressive}) { 	
+		%result = find_nick_sites_aggressive($seq,\@enzymes);
+	}
+	else {
+		%result = find_nick_sites($seq,\@enzymes);
+	}
 	
 	# sort nick sites by genomic position, creating an ordered array of hash references
 	my @nick_sites;
@@ -331,6 +350,88 @@ sub find_nick_sites{
 			#}
 			#$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
 		#}
+		
+		#print "\t\tNickase Enzyme: $enzyme\n";
+		#for my $key (sort{$b <=> $a} keys %classCount) {
+			#print "\t\t\tNick class: $key count: $classCount{$key}\n";
+		#}
+	}
+
+	return %result;
+}
+
+sub find_nick_sites_aggressive{
+	
+	my ($seq, $enzymes_ref) = @_;
+	my $seq_comp = complement($seq);
+	my @enzymes = @{$enzymes_ref};
+	my %result;
+	my $slength = length($seq);
+	
+	
+	foreach my $enzyme (@enzymes) {
+		my $elength = length($enzyme);
+		my %classCount;
+		
+		# Find the first enzyme in the forward strand, starting from the first nucleotide!!!
+		my $current_loc = index($seq, $enzyme, 0);
+		while ($current_loc != -1){
+			if($current_loc + $elength < $slength){
+				if (!exists $result{$current_loc}) {
+					$result{$current_loc} = 1;	#records position at base "G" GCTCTTCN
+				}
+				else {
+					$result{$current_loc} = 3;
+				}
+			}
+		$current_loc = index($seq, $enzyme, $current_loc + 1);
+		}	
+		
+		## find the reverse(enzyme)) in the forward strand 5' -> 3' 
+		my $enzyme_rc = reverse($enzyme);
+		$current_loc = index($seq, $enzyme_rc, 0);
+		while ($current_loc != -1){
+			if($current_loc + $elength < $slength){
+				if (!exists $result{$current_loc + $elength}) {
+					$result{$current_loc + $elength} = 2;	#records position at base "G" NCTTCTCG
+				}
+				else {
+					$result{$current_loc + $elength} = 3;
+				}
+			}
+			$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
+		}
+		
+		# Find the rc(first enzyme) in the forward strand, staring from the first nucleotide!!!
+		$enzyme_rc =~ tr/ACGTUN/TGCAAN/;
+		$current_loc = index($seq, $enzyme_rc, 0);
+		while ($current_loc != -1){
+			if($current_loc + $elength < $slength){
+				if (!exists $result{$current_loc + $elength}) {
+					$result{$current_loc + $elength} = -1;	#records position at base "C" NGAAGAGC
+				}
+				else {
+					$result{$current_loc + $elength} = 3;
+				}
+			}
+			$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
+		}
+		
+		# Find the complement(enzyme) in the forward strand 5' -> 3', starting from the first nucleotide!!!		
+		$enzyme_rc = $enzyme;
+		$enzyme_rc =~ tr/ACGTUN/TGCAAN/;
+		$current_loc = index($seq, $enzyme_rc, 0);
+		while ($current_loc != -1){
+			if($current_loc + $elength < $slength){
+				if (!exists $result{$current_loc}) {
+					$result{$current_loc} = -2;	#records position at base "C" CGAGAAG
+				}
+				else {
+					$result{$current_loc} = 3;
+				}
+			}
+			$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
+		}
 		
 		#print "\t\tNickase Enzyme: $enzyme\n";
 		#for my $key (sort{$b <=> $a} keys %classCount) {

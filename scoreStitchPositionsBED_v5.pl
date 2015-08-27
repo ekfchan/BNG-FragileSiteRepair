@@ -58,8 +58,6 @@ my $cpu  = $info->device( CPU => my %options );
 my $cpuCount = $cpu->count;
 if (exists $inputs{n}) { $cpuCount = int($inputs{n}); }
 
-print "Maximum CPU cores to use: $cpuCount\n\n";
-
 foreach my $key ("xmap","qcmap","rcmap","cmap","alignmolxmap", "alignmolrcmap", "bed", "output", "bam", "fasta", "key") {
 	if (exists $inputs{$key} and $inputs{$key} =~ /[a-z]/i) {
 		$inputs{$key} = abs_path($inputs{$key});
@@ -205,12 +203,25 @@ close MOLRCMAP;
 
 
 # if input BAM and fasta and key files specified, load
-my $sam;
-my @keys;
+my $sam; my $bai;
+my @keys; my $fai;
 my $ngsScoring=0;
+my $singleThread=0;
 my @key_format = qw{CompntId   CompntName   CompntLength};
 if ( defined $inputs{fasta} && exists $inputs{fasta} && defined $inputs{bam} && exists $inputs{bam} && defined $inputs{key} && exists $inputs{key}) {
-	#$sam = Bio::DB::Sam->new( -fasta=>"$inputs{fasta}", -bam  =>"$inputs{bam}" );
+	# force index of fasta file
+	$bai = $inputs{bam} . ".bai"; share($bai) if $sharedmem;
+	$fai = $inputs{fasta} . ".fai"; share($fai) if $sharedmem;
+	$singleThread = 1; $cpuCount = 1;
+	if (-e $bai && -e $fai) {
+		$sam = Bio::DB::Sam->new( -fasta=>"$inputs{fasta}", -fai=>"$fai", -bam=>"$inputs{bam}", -bai=>"$bai" );
+	}
+	else {
+		my $status_code = Bio::DB::Bam->index_build($inputs{bam});
+		my $index = Bio::DB::Sam::Fai->load($inputs{fasta});
+		$sam = Bio::DB::Sam->new( -fasta=>"$inputs{fasta}", -bam=>"$inputs{bam}" );
+	}
+	#my $bai = $sam->bam_index;
 	#share($sam) if $sharedmem;
 	$ngsScoring=1;
 	print "\n";
@@ -250,6 +261,7 @@ $endDateTime = DateTime->now;
 $formatDateTime = DateTime::Format::Human::Duration->new();
 print 'Spent time reading input files : ', $formatDateTime->format_duration_between($endDateTime, $startDateTime); print "\n\n";
 
+print "Maximum CPU cores to use: $cpuCount\n\n";
 
 # set various locks for shared data
 my $output_lock :shared; #output lock
@@ -272,26 +284,33 @@ my %scoreStats :shared;
 
 ### DO WORK ###
 
-for (my $thread=0; $thread<$cpuCount; $thread++) {
-	my $t = threads->create( sub {
-		while(1) {
-			my $curBed;
-			{
-				lock($bedEntryCount);
-                $curBed = $bedEntryCount++;
-            }
-            last if ($curBed >= $bedEntries);
-            process_bed($curBed);
-		}
-        threads->detach();
-	});
-}
+if (!$singleThread) {
+	for (my $thread=0; $thread<$cpuCount; $thread++) {
+		my $t = threads->create( sub {
+			while(1) {
+				my $curBed;
+				{
+					lock($bedEntryCount);
+					$curBed = $bedEntryCount++;
+				}
+				last if ($curBed >= $bedEntries);
+				#$sam->clone;
+				process_bed($curBed);
+			}
+			threads->detach();
+		});
+	}
 
-my $thread_wait_cnt = 0;
-while (threads->list(threads::all)) {
-	sleep(2);
+	my $thread_wait_cnt = 0;
+	while (threads->list(threads::all)) {
+		sleep(2);
+	}
 }
-
+else {
+	for (my $i=0; $i<$bedEntries; $i++) {
+		process_bed($i);
+	}
+}
 
 ### OUTPUT RESULTS ###
 
@@ -638,7 +657,9 @@ sub process_bed {
 	# if NGS scoring enabled
 	my $ngsCount=0;
 	if ($ngsScoring==1) {
-		$sam = Bio::DB::Sam->new( -fasta=>"$inputs{fasta}", -bam  =>"$inputs{bam}" );
+		$sam->clone;
+		#my $sam = Bio::DB::Sam->new( -fasta=>"$inputs{fasta}", -fai=>"$fai", -bam=>"$inputs{bam}", -bai=>"$bai" );
+		#my $sam = Bio::DB::Sam->new( -fasta=>"$inputs{fasta}", -bam=>"$inputs{bam}" );
 		my $seqName;
 		my $seqLen=0;
 		foreach my $keyEntry_ref (@keys) {
