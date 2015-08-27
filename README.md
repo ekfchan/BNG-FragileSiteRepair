@@ -33,6 +33,8 @@ Usage: perl fragileSiteRepair.pl [OPTIONS] --fasta <ref.fa> --cmap <assembly.cma
 
 --n <CPU cores> : Maximum number of CPU cores/threads to use. Default: nproc
 --j <number jobs> : Maximum number of parallel jobs. Default: nproc/6
+
+--h : Display this help menu
 ```
 
 ###Installing dependencies:
