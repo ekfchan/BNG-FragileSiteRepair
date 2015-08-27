@@ -40,6 +40,9 @@ my $getSeq = 0;
 my $threshold = 1.0;
 
 if ($inputs{h} || $inputs{help}) {
+	print "\n";
+	print qx/ps -o args $$/;
+	print "\n";
 	Usage();
 	exit 0;
 }
@@ -55,9 +58,8 @@ print qx/ps -o args $$/;
 print "\n";
 
 if ( !exists $inputs{fasta} | !exists $inputs{cmap} | !exists $inputs{output} ) {
-	print "Usage: perl fragileSiteRepair.pl --fasta <reference.fasta> --cmap <assembly.cmap> --output <output folder> [--bnx <input.bnx to run alignmol>] [--err <original assembly alignmol_merge.err or autonoise1.err>] [--enzyme <sequence of enzyme to use =GCTCTTC>] [--bam <.bam alignment of NGS reads/contigs to input ref FASTA>]  [--threshold <minimum score threshold below which to cut stitched maps =1>] [--maxlab <max_label_gap_tolerence =1>] [--maxfill <max basepairs to fill between contigs =30000>] [--wobble <fragile site wobble in bp =30000>] [--seq <sequence bp +/- fragile site to print in final BED =off>] [--force <overwrite output folder =off>] [--n <number of CPU cores =nproc>] [--j <number of parallel jobs =nproc/6>] [--optArgs <optArguments.xml =optArguments_human.xml>] [--runSV <enable run SV detection =off>]  [--break <break maps at stitch locations with score below threshold =off>] [--endoutlier <Pvalue penalty for endoutlier =1e-3>] [--aggressive <calculate TypeIII and TypeIV fragile sites =off>]\n";
-	print "Invalid or missing inputs!\n"; 
-	#Usage();
+	#print "Usage: perl fragileSiteRepair.pl --fasta <reference.fasta> --cmap <assembly.cmap> --output <output folder> [--bnx <input.bnx to run alignmol>] [--err <original assembly alignmol_merge.err or autonoise1.err>] [--enzyme <sequence of enzyme to use =GCTCTTC>] [--bam <.bam alignment of NGS reads/contigs to input ref FASTA>] [--ngsBuffer <bp +/- stitchPosition to require NGS alignment =500>] [--threshold <minimum score threshold below which to cut stitched maps =1>] [--maxlab <max_label_gap_tolerence =1>] [--maxfill <max basepairs to fill between contigs =30000>] [--wobble <fragile site wobble in bp =30000>] [--seq <sequence bp +/- fragile site to print in final BED =off>] [--force <overwrite output folder =off>] [--n <number of CPU cores =nproc>] [--j <number of parallel jobs =nproc/6>] [--optArgs <optArguments.xml =optArguments_human.xml>] [--runSV <enable run SV detection =off>]  [--break <break maps at stitch locations with score below threshold =off>] [--endoutlier <Pvalue penalty for endoutlier =1e-3>] [--aggressive <calculate TypeIII and TypeIV fragile sites =off>]\n\n"; 
+	Usage();
 	print "\n";
 	exit 0; 
 }
@@ -1067,15 +1069,38 @@ sub extractErr {
 } 
 	
 sub Usage {
-	# Usage: perl fragileSiteRepair.pl [--fasta <reference.fasta>] [--bed <reference_fsites.bed>] [--cmap <assembly.cmap>] --xmap <input.xmap> --qcmap <input_q.cmap> --rcmap <input_r.cmap> --errbin <input.errbin> --output <output folder> --err <alignmol_merge.err> [--ref <reference.cmap>] [--threshold <minimum score threshold below which to cut stitched maps>] [--maxlab <max_label_gap_tolerence = 1>] [--maxfill <max basepairs to fill between contigs = 30000>] [--wobble <fragile site wobble in bp = 30000>] [--seq <sequence bp +/- fragile site to print in final BED = 50>] [--force <overwrite output folder>] [--n <number of CPU cores>] [--j <number of parallel jobs>] [--optArgs <optArguments_human.xml>] [--runSV <enable run SV detection>] [--bnx <input.bnx to run alignmol>] [--break <break maps at stitch locations with score below threshold>]
-	print "\n\nUsage: perl fragileSiteRepair.pl [OPTIONS]\n\n";
-	print "\t--fasta <reference.fasta>; required\n";
-	print "\t\t-OR-\n";
-	print "\t--bed <reference_fsites.bed>; required\n";
+	#Usage: perl fragileSiteRepair.pl --fasta <reference.fasta> --cmap <assembly.cmap> --output <output folder> [--bnx <input.bnx to run alignmol>] [--err <original assembly alignmol_merge.err or autonoise1.err>] [--enzyme <sequence of enzyme to use =GCTCTTC>] [--bam <.bam alignment of NGS reads/contigs to input ref FASTA>] [--ngsBuffer <bp +/- stitchPosition to require NGS alignment =500>] [--threshold <minimum score threshold below which to cut stitched maps =1>] [--maxlab <max_label_gap_tolerence =1>] [--maxfill <max basepairs to fill between contigs =30000>] [--wobble <fragile site wobble in bp =30000>] [--seq <sequence bp +/- fragile site to print in final BED =off>] [--force <overwrite output folder =off>] [--n <number of CPU cores =nproc>] [--j <number of parallel jobs =nproc/6>] [--optArgs <optArguments.xml =optArguments_human.xml>] [--runSV <enable run SV detection =off>]  [--break <break maps at stitch locations with score below threshold =off>] [--endoutlier <Pvalue penalty for endoutlier =1e-3>] [--aggressive <calculate TypeIII and TypeIV fragile sites =off>]
+	print "Usage: perl fragileSiteRepair.pl [OPTIONS] --fasta <ref.fa> --cmap <assembly.cmap> --output <output folder>\n\n";
+	print "\t=== REQUIRED ===\n";
+	print "\t--fasta <.fasta> : input reference FASTA file to be used for fragile site prediction and alignment\n";
+	print "\t--cmap <.cmap> : input BioNano assembly CMAP to perform fragileSiteRepair on\n";
+	print "\t--output <path/to/output> : output folder\n";
+	print "\n";
+	print "\t=== KEY OPTIONS ===\n";
+	print "\t--bnx <.bnx> : input NMX used for assembly. Requires --err to perform single molecule alignments. Default: OFF\n";
+	print "\t--err <.err> : molecules ERR file from assembly alignmol/merge OR autoNoise1. Requires --bnx to perform single molecule alignments. Default: OFF\n";
+	print "\t--bam <.bam> : BAM file of NGS scaffolds/contigs/reads aligned to --fasta. Used to supplement scoring of stitchPositions. Default: OFF\n";
+	print "\n";
+	print "\t--break : Flag to enable breaking of maps at stitchPositions with score less than threshold value. Requires --bnx and --err. Default: OFF\n";
+	print "\t--runSV : Flag to run SV module on final cmap. Default: OFF\n";
+	print "\t--force : Flag to overwrite --output folder. Default: OFF\n";
+	print "\t--aggressive : Flag to calculate TypeIII and TypeIV fragile sites in addition. Default: OFF\n";
+	print "\n";
+	print "\t=== OTHER OPTIONS ===\n";
+	print "\t--enzyme <nickase sequence> : Nickase enzyme for in-silico digestion and fragile site prediction. Default: GCTCTTC\n";
+	print "\t--ngsBuffer <basepairs> : Number of basepairs that a single NGS alignment must extend past the ends of a stitchPosition to supplement score. Default: 500\n";
+	print "\t--threshold <score> : Minimum stitchPoisitons score below which to break maps. Default: 1.0\n";
+	print "\t--maxlab <label count> : Maximum number of reference labels to allow between adjacent maps. Default: 1\n";
+	print "\t--maxfill <basepairs> : Maximum number of basepairs to allow between adjacent maps. Default: 30000\n";
+	print "\t--wobble <basepairs> : Maximum number of basepairs to allow the fragile site to vary. Default: 30000\n";
+	print "\t--seq <basepairs> : Number of basepairs of reference sequence +/- fragile site to output into BED file. Default: OFF\n";
+	print "\t--optArgs <optArguments.xml> : optArguments.xml to use for alignment. Default: ~/scripts/optArguments_human.xml\n";
+	print "\t--endoutlier <pvalue> : endoutlier penalty for single molecule alignments. Default: 1e-3\n";
+	print "\n";
+	print "\t--n <CPU cores> : Maximum number of CPU cores/threads to use. Default: nproc\n";
+	print "\t--j <number jobs> : Maximum number of parallel jobs. Default: nproc/6\n";
 	
-	
-	
-	
+	print "\n";
 }
 
 	
