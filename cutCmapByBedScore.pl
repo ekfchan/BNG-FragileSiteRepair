@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Usage: perl cutCmapByBedScore.pl <--bed stitchPositions_scored.bed> <--stats stitchPositions_scoreStats.csv> <--cmap fragileSiteRepaired_merged.cmap> <--output output folder> [<--prefix output prefix>] [--threshold <score threshold below which to cut default=1.0>] [--maxfill <minlen filter bp default=30000>]
+# Usage: perl cutCmapByBedScore.pl <--bed stitchPositions_scored.bed> <--stats stitchPositions_scoreStats.csv> <--cmap fragileSiteRepaired_merged.cmap> <--output output folder> [<--prefix output prefix>] [--threshold <score threshold below which to cut default=1.0>] [--maxfill <minlen filter bp default=30000>] [--breakNGSonly <break maps if stitch has no BioNano support default=off>]
 # Example:
 
 use strict;
@@ -16,10 +16,10 @@ print "\n";
 
 ## << usage statement and variable initialisation >>
 my %inputs = (); 
-GetOptions( \%inputs, 'stats=s', 'bed=s', 'cmap=s', 'prefix=s', 'threshold=s', 'maxfill:i', 'output:s'); 
+GetOptions( \%inputs, 'stats=s', 'bed=s', 'cmap=s', 'prefix=s', 'threshold=s', 'maxfill:i', 'output:s', 'breakNGSonly'); 
 
 if( !exists $inputs{bed} | !exists $inputs{stats} | !exists $inputs{cmap} | !exists $inputs{output} ) {
-	print "Usage: perl cutCmapByBedScore.pl <--bed stitchPositions_scored.bed> <--stats stitchPositions_scoreStats.csv> <--cmap fragileSiteRepaired_merged.cmap> <--output output folder> [<--prefix output prefix>] [--threshold <score threshold below which to cut default=1.0>] [--maxfill <minlen filter bp default=30000>]\n"; 
+	print "Usage: perl cutCmapByBedScore.pl <--bed stitchPositions_scored.bed> <--stats stitchPositions_scoreStats.csv> <--cmap fragileSiteRepaired_merged.cmap> <--output output folder> [<--prefix output prefix>] [--threshold <score threshold below which to cut default=1.0>] [--maxfill <minlen filter bp default=30000>] [--breakNGSonly <break maps if stitch has no BioNano support>]\n"; 
 	exit 0; 
 }
 foreach my $key ("bed","stats","cmap", "output") {
@@ -91,12 +91,12 @@ while (my $line = <STATS>) {
 		next; }
 	else {
 		my @s = split(",",$line);
-		#BedLine,Type,FsiteSize,RefId,RefStart-End,RefLabelStart-End,MapId,MapStart-End,MapLabelStart-End,AvgMapCov,TotalHits,UniqueMolecules,TotalConf,AvgConfPerHit,AvgConfPerMol,Score,AltScore,MoleculeMatches
+		#BedLine,Type,FsiteSize,RefId,RefStart-End,RefLabelStart-End,MapId,MapStart-End,MapLabelStart-End,AvgMapCov,TotalHits,UniqueMolecules,TotalNGSHits,TotalConf,AvgConfPerHit,AvgConfPerMol,Score,AltScore,MoleculeMatches,NGSMatches
 			my %statsLine = (
 				"BedLine"  => "$s[0]",
 				#"Type" => "$s[1]", 
-				#"RefId"  => "$s[2]",
-				#"FsiteSize" => "$s[3]",
+				#"FsiteSize" => "$s[2]",
+				#"RefId"  => "$s[3]",
 				#"RefStart-End"  => "$s[4]",
 				#"RefLabelStart-End" => "$s[5]",
 				"MapId" => "$s[6]",
@@ -104,13 +104,15 @@ while (my $line = <STATS>) {
 				#"MapLabelStart-End" => "$s[8]",
 				#"AvgMapCov" => "$s[9],
 				#"TotalHits" => "$s[10]",
-				#"UniqueMolecules" => "$s[11]",
-				#"TotalConf" => "$s[12]",
-				#"AvgConfPerHit" => "$s[13]",
-				#"AvgConfPerMol" => "$s[14]",
-				#"Score" => "$s[15]",
-				#"AltScore" => "$s[16]",
-				#"MoleculeMatches" => "$s[17]"
+				"UniqueMolecules" => "$s[11]",
+				"TotalNGSHits" => "$s[12]",
+				#"TotalConf" => "$s[13]",
+				#"AvgConfPerHit" => "$s[14]",
+				#"AvgConfPerMol" => "$s[15]",
+				#"Score" => "$s[16]",
+				#"AltScore" => "$s[17]",
+				#"MoleculeMatches" => "$s[18]",
+				#"NGSMatches" => "$s[19]"
 			);
 						
 			push @statsIn, \%statsLine;
@@ -233,18 +235,22 @@ for (my $i=0; $i<scalar(@bedIn); $i++) {
 	my $bedEnd = $bedLine{'End'};
 	my $score = $bedLine{'Score'};
 	
-	##### SCORE THRESHOLD FILTERING #####
-	if ($score < $scoreThreshold) { ## get IDs of maps where the stitch score is less than threshold
+	my $statsLine_ref = $statsIn[$i];
+	my %statsLine = %$statsLine_ref; 			#BedLine,Type,FsiteSize,RefId,RefStart-End,RefLabelStart-End,MapId,MapStart-End,MapLabelStart-End,AvgMapCov,TotalHits,UniqueMolecules,TotalNGSHits,TotalConf,AvgConfPerHit,AvgConfPerMol,Score,AltScore,MoleculeMatches,NGSMatches
+	my $qryId = $statsLine{'MapId'};
+	my $ngsOnly=0;
+	my $uniqMols = $statsLine{'UniqueMolecules'};
+	my $ngsHits = $statsLine{'TotalNGSHits'};
+	if ((int($uniqMols)==0) && (int($ngsHits)>0)) { $ngsOnly = 1; }
+	my $qryStartEnd = $statsLine{'MapStart-End'};
+	my @s = split("-",$qryStartEnd);
+	my $qryStart = $s[0]; $qryStart = $qryStart/1000;
+	my $qryEnd = $s[1];	$qryEnd = $qryEnd/1000;
+	
+	##### SCORE THRESHOLD FILTERING AND/OR BREAK-NGS-ONLY#####
+	if ( (defined($inputs{breakNGSonly}) && $ngsOnly) || $score < $scoreThreshold) { ## get IDs of maps where the stitch score is less than threshold
 		$undoCount++;
-		
-		my $statsLine_ref = $statsIn[$i];
-		my %statsLine = %$statsLine_ref; 		#BedLine,Type,RefId,RefStart-End,RefLabelStart-End,MapId,MapStart-End,MapLabelStart-End,TotalHits,UniqueMolecules,TotalConf,AvgConfPerHit,AvgConfPerMol,Score,AltScore,MoleculeMatches
-		my $qryId = $statsLine{'MapId'};
-		my $qryStartEnd = $statsLine{'MapStart-End'};
-		my @s = split("-",$qryStartEnd);
-		my $qryStart = $s[0]; $qryStart = $qryStart/1000;
-		my $qryEnd = $s[1];	$qryEnd = $qryEnd/1000;
-		
+				
 		#my $breakpoint = 0;
 		my @breakpoints;
 		

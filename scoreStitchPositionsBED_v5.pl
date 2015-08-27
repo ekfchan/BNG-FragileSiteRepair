@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-#Usage: perl scoreStitchPositionsBED_v4.pl <--bed stitchPositions.bed> <--xmap alignref_final.xmap> <--qcmap alignref_final_q.cmap> <--rcmap alignref_final_r.cmap> <--alignmolxmap alignmol.xmap> <--alignmolrcmap alignmol_r.cmap> <--fasta reference.fasta> <--key key file from fa2cmap> <--bam NGSalignments.bam to ref fasta> <--output output directory> <--ngsBuffer bp +/- stitch location to require NGS alignment support> [<--n cpu cores>]
+#Usage: perl scoreStitchPositionsBED_v4.pl <--bed stitchPositions.bed> <--xmap alignref_final.xmap> <--qcmap alignref_final_q.cmap> <--rcmap alignref_final_r.cmap> <--alignmolxmap alignmol.xmap> <--alignmolrcmap alignmol_r.cmap> <--fasta reference.fasta> <--key key file from fa2cmap> <--bam NGSalignments.bam to ref fasta> <--output output directory> <--ngsBuffer bp +/- stitch location to require NGS alignment support> [<--n cpu cores>] [--ngsBonus <raw score value give supporting NGS alignemnts =10>]
 #Example: 
 
 use strict;
@@ -29,10 +29,10 @@ print "\n";
 
 ## << usage statement and variable initialisation >>
 my %inputs = (); 
-GetOptions( \%inputs, 'xmap=s', 'qcmap=s', 'rcmap=s', 'cmap=s', 'alignmolxmap=s', 'alignmolrcmap=s','bed:s', 'n:i','output:s', 'bam:s', 'fasta:s', 'key:s', 'ngsBuffer:i'); 
+GetOptions( \%inputs, 'xmap=s', 'qcmap=s', 'rcmap=s', 'cmap=s', 'alignmolxmap=s', 'alignmolrcmap=s','bed:s', 'n:i','output:s', 'bam:s', 'fasta:s', 'key:s', 'ngsBonus:i', 'ngsBuffer:i'); 
 
 if( !exists $inputs{xmap} | !exists $inputs{qcmap} | !exists $inputs{rcmap} | !exists $inputs{alignmolxmap} | !exists $inputs{output} | !exists $inputs{alignmolrcmap} ) {
-	print "Usage: perl scoreStitchPositionsBED_v4.pl <--bed stitchPositions.bed> <--xmap alignref_final.xmap> <--qcmap alignref_final_q.cmap> <--rcmap alignref_final_r.cmap> <--alignmolxmap alignmol.xmap> <--alignmolrcmap alignmol_r.cmap> <--fasta reference.fasta> <--key key file from fa2cmap> <--bam NGSalignments.bam> <--output output directory> [<--n cpu cores>]\n"; 
+	print "Usage: perl scoreStitchPositionsBED_v4.pl <--bed stitchPositions.bed> <--xmap alignref_final.xmap> <--qcmap alignref_final_q.cmap> <--rcmap alignref_final_r.cmap> <--alignmolxmap alignmol.xmap> <--alignmolrcmap alignmol_r.cmap> <--fasta reference.fasta> <--key key file from fa2cmap> <--bam NGSalignments.bam to ref fasta> <--output output directory> <--ngsBuffer bp +/- stitch location to require NGS alignment support> [<--n cpu cores>] [--ngsBonus <raw score value give supporting NGS alignemnts =10>]\n"; 
 	exit 0; 
 }
 
@@ -57,6 +57,8 @@ my $cpu  = $info->device( CPU => my %options );
 #printf "There are %d CPUs\n"  , $cpu->count || 1;
 my $cpuCount = $cpu->count;
 if (exists $inputs{n}) { $cpuCount = int($inputs{n}); }
+my $ngsBonus = 10;
+if (exists $inputs{ngsBonus}) { $ngsBonus = int($inputs{ngsBonus}); }
 
 foreach my $key ("xmap","qcmap","rcmap","cmap","alignmolxmap", "alignmolrcmap", "bed", "output", "bam", "fasta", "key") {
 	if (exists $inputs{$key} and $inputs{$key} =~ /[a-z]/i) {
@@ -713,7 +715,7 @@ sub process_bed {
 			
 			if (($start < ($bedStart-$scoreBuffer)) && ($end > ($bedEnd+$scoreBuffer)) && ($match_qual >= 30)) {
 				$ngsCount++;
-				$totalConf = $totalConf + 10;
+				$totalConf = $totalConf + $ngsBonus;
 				push @ngsIds, $read_name;
 				#print "\t\tFOUND: $start $end $match_qual\n";
 			}

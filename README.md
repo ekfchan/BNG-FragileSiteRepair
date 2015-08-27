@@ -23,6 +23,7 @@ Usage: perl fragileSiteRepair.pl [OPTIONS] --fasta <ref.fa> --cmap <assembly.cma
 === OTHER OPTIONS ===
 --enzyme <nickase sequence> : Nickase enzyme for in-silico digestion and fragile site prediction. Default: GCTCTTC
 --ngsBuffer <basepairs> : Number of basepairs that a single NGS alignment must extend past the ends of a stitchPosition to supplement score. Default: 500
+--ngsBonus <raw score value> : Score bonus for each NGS alignment supporting a fragile site repair. Default: 10
 --threshold <score> : Minimum stitchPoisitons score below which to break maps. Default: 1.0
 --maxlab <label count> : Maximum number of reference labels to allow between adjacent maps. Default: 1
 --maxfill <basepairs> : Maximum number of basepairs to allow between adjacent maps. Default: 30000
