@@ -29,7 +29,7 @@ Usage: perl fragileSiteRepair.pl [OPTIONS] --fasta <ref.fa> --cmap <assembly.cma
 --wobble <basepairs> : Maximum number of basepairs to allow the fragile site to vary. Default: 30000
 --seq <basepairs> : Number of basepairs of reference sequence +/- fragile site to output into BED file. Default: OFF
 --optArgs <optArguments.xml> : optArguments.xml to use for alignment. Default: ~/scripts/optArguments_human.xml
---endoutlier <pvalue> : endoutlier penalty for single molecule alignments. Default: 1e-3
+--endoutlier <pvalue> : endoutlier penalty for single molecule alignments (see RefAligner -help for more info). Default: 1e-3
 
 --n <CPU cores> : Maximum number of CPU cores/threads to use. Default: nproc
 --j <number jobs> : Maximum number of parallel jobs. Default: nproc/6
