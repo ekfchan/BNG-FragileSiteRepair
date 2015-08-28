@@ -230,6 +230,7 @@ if ( defined $inputs{fasta} && exists $inputs{fasta} && defined $inputs{bam} && 
 	print "Input reference FASTA: $inputs{fasta}\n";
 	print "Input reference FASTA key: $inputs{key}\n";
 	print "Input NGS alignment BAM: $inputs{bam}\n";
+	print "\tReducing maximum cores to 1 ...\n";
 	print "\tRequire $scoreBuffer bp +/- stitchPosition start/end to count NGS alignment as support\n";
 	#print "\n";
 	
