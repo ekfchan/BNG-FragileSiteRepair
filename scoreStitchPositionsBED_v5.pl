@@ -659,7 +659,7 @@ sub process_bed {
 	# if NGS scoring enabled
 	my $ngsCount=0;
 	if ($ngsScoring==1) {
-		$sam->clone;
+		#$sam->clone;
 		#my $sam = Bio::DB::Sam->new( -fasta=>"$inputs{fasta}", -fai=>"$fai", -bam=>"$inputs{bam}", -bai=>"$bai" );
 		#my $sam = Bio::DB::Sam->new( -fasta=>"$inputs{fasta}", -bam=>"$inputs{bam}" );
 		my $seqName;

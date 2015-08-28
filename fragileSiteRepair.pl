@@ -1060,6 +1060,7 @@ sub extractErr {
 	
 	my %errHash;
 	#Iteration	FP(/100kb)	FN(rate)	sf	sd	bpp	res(pixels)	Maps	Log10LR(/Maps)	GoodMaps	log10LR(/GoodMaps)	bppSD	FPrate	sr	se	LabelDensity(/100kb)	resSD(pixels)	mres(x500bp)	mresSD(x500bp)
+	#OLD: Iteration	FP(/100kb)	FNrate	SiteSD(Kb)	ScalingSD(Kb^1/2)	bpp	res(pixels)	Maps	Log10LR(/Maps)	GoodMaps	log10LR(/GoodMaps)	bppSD	FPrate	RelativeSD	ResolutionSD	LabelDensity(/100kb)	resSD	mres	mresSD
 	my @header = split("\t",$errArr[0]);
 	my @params = split("\t",$errArr[-1]);
 	for (my $i=0; $i<scalar(@params); $i++) {
@@ -1067,6 +1068,10 @@ sub extractErr {
 		my $param = $params[$i];
 		if (defined $head) { chomp($head); } 
 		if (defined $param) { chomp($param); }
+		if ($head =~ /FNrate/i) { $head = "FN(rate)"; }
+		elsif ($head =~ m/SiteSD/i) { $head = "sf"; }
+		elsif ($head =~ m/ScalingSD/i) { $head = "sd"; }
+		elsif ($head =~ m/RelativeSD/i) { $head = "sr"; }
 		#load into hash
 		$errHash{$head} = $param;
 	}
@@ -1095,7 +1100,7 @@ sub Usage {
 	print "\t=== OTHER OPTIONS ===\n";
 	print "\t--enzyme <nickase sequence> : Nickase enzyme for in-silico digestion and fragile site prediction. Default: GCTCTTC\n";
 	print "\t--ngsBuffer <basepairs> : Number of basepairs that a single NGS alignment must extend past the ends of a stitchPosition to supplement score. Default: 500\n";
-	print "\t--ngsBonus <raw score value> : Score bonus for each NGS alignment supporting a fragile site repair. Default: 10\n";
+	print "\t--ngsBonus <raw score value> : Raw score bonus for each NGS alignment supporting a fragile site repair. Default: 10\n";
 	print "\t--breakNGSonly : Flag to break maps at stitchPositions that have only NGS alignment support and no BioNano single molecule support. Default: OFF\n";
 	print "\t--threshold <score> : Minimum stitchPoisitons score below which to break maps. Default: 1.0\n";
 	print "\t--maxlab <label count> : Maximum number of reference labels to allow between adjacent maps. Default: 1\n";
