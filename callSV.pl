@@ -21,11 +21,11 @@ use DateTime::Format::Human::Duration;
 my $dtStart = DateTime->now;
 
 # Make sure dependency scripts exist
-my $splitCmapByIds = abs_path(dirname($0))."/splitCmapByIds.sh";
+#my $splitCmapByIds = abs_path(dirname($0))."/splitCmapByIds.sh";
 # print "Split script: $splitCmapByIds\n";
 my $runSV = glob("~/scripts/runSV.py");
 # print "Calc Stats script: $calc_cmap_stats\n";
-if (!-e $splitCmapByIds | !-e $runSV) {
+if (!-e $runSV) {
 	die "ERROR: Dependency scripts not found: $!\n"; 
 }
 
