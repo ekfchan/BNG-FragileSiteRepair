@@ -25,7 +25,7 @@ Usage: perl fragileSiteRepair.pl [OPTIONS] --fasta <ref.fa> --cmap <assembly.cma
 --ngsBuffer <basepairs> : Number of basepairs that a single NGS alignment must extend past the ends of a stitchPosition to supplement score. Default: 500
 --ngsBonus <raw score value> : Score bonus for each NGS alignment supporting a fragile site repair. Default: 10
 --breakNGSonly : Flag to break maps at stitchPositions that have only NGS alignment support and no BioNano single molecule support. Default: OFF
---threshold <score> : Minimum stitchPoisitons score below which to break maps. Default: 1.0
+--threshold <scaled score> : Minimum stitchPoisitons scaled score below which to break maps. Default: 1.0
 --maxlab <label count> : Maximum number of reference labels to allow between adjacent maps. Default: 1
 --maxfill <basepairs> : Maximum number of basepairs to allow between adjacent maps. Default: 30000
 --wobble <basepairs> : Maximum number of basepairs to allow the fragile site to vary. Default: 30000

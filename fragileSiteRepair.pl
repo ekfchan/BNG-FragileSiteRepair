@@ -1102,7 +1102,7 @@ sub Usage {
 	print "\t--ngsBuffer <basepairs> : Number of basepairs that a single NGS alignment must extend past the ends of a stitchPosition to supplement score. Default: 500\n";
 	print "\t--ngsBonus <raw score value> : Raw score bonus for each NGS alignment supporting a fragile site repair. Default: 10\n";
 	print "\t--breakNGSonly : Flag to break maps at stitchPositions that have only NGS alignment support and no BioNano single molecule support. Default: OFF\n";
-	print "\t--threshold <score> : Minimum stitchPoisitons score below which to break maps. Default: 1.0\n";
+	print "\t--threshold <scaled score> : Minimum stitchPoisitons scaled score below which to break maps. Default: 1.0\n";
 	print "\t--maxlab <label count> : Maximum number of reference labels to allow between adjacent maps. Default: 1\n";
 	print "\t--maxfill <basepairs> : Maximum number of basepairs to allow between adjacent maps. Default: 30000\n";
 	print "\t--wobble <basepairs> : Maximum number of basepairs to allow the fragile site to vary. Default: 30000\n";
