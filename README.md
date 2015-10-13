@@ -11,7 +11,7 @@ Usage: perl fragileSiteRepair.pl [OPTIONS] --fasta <ref.fa> --cmap <assembly.cma
 --output <path/to/output> : output folder
 
 === KEY OPTIONS ===
---bnx <.bnx> : input NMX used for assembly. Requires --err to perform single molecule alignments. Default: OFF
+--bnx <.bnx> : input BNX used for assembly. Requires --err to perform single molecule alignments. Default: OFF
 --err <.err> : molecules ERR file from assembly alignmol/merge OR autoNoise1. Requires --bnx to perform single molecule alignments. Default: OFF
 --bam <.bam> : BAM file of NGS scaffolds/contigs/reads aligned to --fasta. Used to supplement scoring of stitchPositions. Default: OFF
 
