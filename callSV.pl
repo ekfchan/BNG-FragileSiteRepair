@@ -2,7 +2,7 @@
 
 # Script to merge call structural variations on FSITEREPAIRED_FINAL.cmap 
 #
-# Usage: callSV.pl --ref <reference.cmap> --cmap <input.cmap> --errbin <input.errbin> --optarg <optArguments.xml> --outdir <output_folder> [--prefix <contig_prefix>] [--mres <pixels_to_reduce_ref> [--force] [--n <CPU cores to use>]
+# Usage: callSV.pl --ref <reference.cmap> --cmap <input.cmap> --errbin <input.errbin> --optarg <optArguments.xml> --outdir <output_folder> [--gaps <N-base gaps BED file>] [--prefix <contig_prefix>] [--mres <pixels_to_reduce_ref> [--force] [--n <CPU cores to use>]
 
 use strict; 
 use warnings; 
@@ -39,10 +39,10 @@ my $mem = int((((&totalmem / 1024) / 1024)) / 1024);
 # << usage statement and variable initialisation >>
 my %inputs = (); 
 $inputs{'force'}=0;
-GetOptions( \%inputs, 'ref=s', 'cmap=s', 'errbin=s', 'outdir=s', 'prefix:s', 'mres:f', 'optarg=s', 'force','n:i'); 
+GetOptions( \%inputs, 'ref=s', 'cmap=s', 'errbin=s', 'outdir=s', 'prefix:s', 'mres:f', 'optarg=s', 'force','n:i', 'gaps=s'); 
 
 if ( (!exists $inputs{ref} & !exists $inputs{cmap}) | !exists $inputs{outdir} | !exists $inputs{errbin} | !exists $inputs{optarg}) {
-	print "Usage: callSV.pl --ref <reference.cmap> --cmap <input.cmap> --errbin <input.errbin> --optarg <optArguments.xml> --outdir <output_folder> [--prefix <contig_prefix>] [--mres <pixels_to_reduce_ref> [--force] [--n <CPU cores to use>]\n"; 
+	print "Usage: callSV.pl --ref <reference.cmap> --cmap <input.cmap> --errbin <input.errbin> --optarg <optArguments.xml> --outdir <output_folder> [--gaps <N-base gaps BED file>] [--prefix <contig_prefix>] [--mres <pixels_to_reduce_ref> [--force] [--n <CPU cores to use>]\n"; 
 	exit 0; 
 } else {
 	print "\nStart time: "; print join ' ', $dtStart->ymd, $dtStart->hms; print "\n";
@@ -52,6 +52,7 @@ foreach my $key ("ref","cmap","errbin","optarg") {
 	if ( ! -e $inputs{$key} ) { die "Input $inputs{$key} does not exists: $!\n"; }
 }
 if( exists $inputs{n} ) { $cpuCount = $inputs{n}; }
+if( exists $inputs{gaps} ) { $inputs{gaps} = abs_path($inputs{gaps}); }
 
 # create output folders
 $inputs{outdir} = abs_path($inputs{outdir});
@@ -163,6 +164,9 @@ $dtNow = DateTime->now;
 print "\n\n===== Detect SV =====\n\n";
 #$cmd="python $runSV -t ~/tools/RefAligner -r $inputs{outdir}/$ref -q $qcmapdir -o $svdir -p ~/scripts/ -a $inputs{optarg} -T $cpuCount -j ".int($cpuCount/4)." -E $inputs{errbin}";
 $cmd="python $runSV -t ~/tools/RefAligner -r $inputs{outdir}/$ref -q $qcmapdir -o $svdir -p ~/scripts/ -a $inputs{optarg} -T $cpuCount -E $inputs{errbin}";
+if (defined $inputs{gaps}) {
+	if (-e $inputs{gaps}) { $cmd = $cmd." -b $inputs{gaps}"; }
+}
 print "Running command: \n\n$cmd\n\n"; 
 my @log = capture($cmd); 
 my $logfile = $svdir."/runSV.log"; 

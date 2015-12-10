@@ -17,6 +17,7 @@ Usage: perl fragileSiteRepair.pl [OPTIONS] --fasta <ref.fa> --cmap <assembly.cma
 
 --break : Flag to enable breaking of maps at stitchPositions with score less than threshold value. Requires --bnx and --err. Default: OFF
 --runSV : Flag to run SV module on final cmap. Default: OFF
+--gaps  : N-base gaps BED file 
 --force : Flag to overwrite --output folder. Default: OFF
 --aggressive : Flag to calculate TypeIII and TypeIV fragile sites in addition. Default: OFF
 

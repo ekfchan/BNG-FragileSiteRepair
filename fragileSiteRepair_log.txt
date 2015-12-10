@@ -1,0 +1,397 @@
+
+COMMAND
+perl ../BNG-FragileSiteRepair/fragileSiteRepair.pl --fasta ../hg19_chromosome.fa --cmap output/contigs/exp_refineFinal1/EXP_REFINEFINAL1.cmap --output ./fragileSiteRepair_noNGS_noCut --runSV --gaps ../hg19_gaps.bed
+
+
+Start time: 2015-11-17 02:24:44
+
+Running on host: ypsilon9.bnm.local
+Maximum CPU cores to use: 48
+Maximum parallel jobs: 8
+Maximum memory to use: 125 GB
+
+Input FASTA: /home/users2/psheth/data/UP2153_IrysView2.3/hg19_chromosome.fa
+	Using enzyme: GCTCTTC
+Input assembly CMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/output/contigs/exp_refineFinal1/EXP_REFINEFINAL1.cmap
+Using optArguments: /home/users2/psheth/scripts/optArguments_human.xml
+
+Input BNX and/or molecules ERR not provided! Skipping single molecule alignments...
+
+Output folder: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut
+
+Maximum labels between maps: 1
+Maximum basepairs to fill between maps: 30000
+Maximum fragile site wobble: 30000
+
+SV module enabled
+
+
+=== Step 1: In-silico digest input FASTA into CMAP ===
+
+Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/fa2cmap_multi_color.pl -i /home/users2/psheth/data/UP2153_IrysView2.3/hg19_chromosome.fa -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/ -e GCTCTTC 1
+
+
+=== Step 2: Align input assembly CMAP to input reference FASTA CMAP ===
+
+	Running command: cp /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/runCharacterizeFinal.py ~/scripts/; cd /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC.cmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/EXP_REFINEFINAL1.cmap -p ~/scripts/ -n 48
+
+
+=== Step 3: Split initial alignment XMAP into individual anchor XMAPs ===
+Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/split_xmap_standalone.pl /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.xmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1_q.cmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1_r.cmap EXP_REFINEFINAL1_contig /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs
+
+
+=== Step 4: Calculate potential fragile sites for input FASTA ===
+Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/calcFragileSites.pl --fasta /home/users2/psheth/data/UP2153_IrysView2.3/hg19_chromosome.fa --output /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut --enzyme GCTCTTC
+
+Spent time at this step: 1 minute and 21 seconds
+
+
+=== Step 5: Run gapFill.pl for each anchor XMAP ===
+Processing anchor maps in parallel fashion...
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig1.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig1_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig1_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig1.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig1_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig1_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig1_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig10.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig10_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig10_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig10.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig10_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig10_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig10_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig11.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig11_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig11_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig11.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig11_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig11_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig11_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig13.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig13_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig13_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig13.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig13_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig13_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig13_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig12.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig12_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig12_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig12.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig12_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig12_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig12_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig14.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig14_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig14_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig14.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig14_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig14_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig14_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig15.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig15_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig15_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig15.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig15_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig15_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig15_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig16.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig16_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig16_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig16.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig16_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig16_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig16_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig17.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig17_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig17_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig17.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig17_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig17_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig17_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig18.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig18_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig18_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig18.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig18_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig18_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig18_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig19.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig19_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig19_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig19.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig19_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig19_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig19_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig2.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig2_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig2_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig2.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig2_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig2_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig2_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig20.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig20_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig20_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig20.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig20_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig20_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig20_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig21.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig21_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig21_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig21.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig21_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig21_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig21_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig22.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig22_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig22_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig22.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig22_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig22_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig22_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig23.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig23_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig23_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig23.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig23_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig23_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig23_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig24.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig24_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig24_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig24.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig24_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig24_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig24_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig3.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig3_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig3_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig3.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig3_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig3_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig3_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig4.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig4_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig4_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig4.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig4_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig4_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig4_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig5.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig5_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig5_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig5.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig5_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig5_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig5_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig6.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig6_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig6_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig6.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig6_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig6_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig6_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig7.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig7_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig7_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig7.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig7_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig7_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig7_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig8.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig8_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig8_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig8.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig8_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig8_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig8_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+Waiting for all processes to finish...
+
+XMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig9.xmap
+QCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig9_q.cmap
+RCMAP: /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig9_r.cmap
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/gapFill.pl -x /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig9.xmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig9_q.cmap -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig9_r.cmap -e /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/alignref_initial/EXP_REFINEFINAL1.errbin -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/EXP_REFINEFINAL1_contig9_fragileSiteRepaired --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC_fsites.bed --maxlab 1 --maxfill 30000 --wobble 30000 --n 48
+
+
+
+
+
+
+
+
+
+Spent time at this step: 2 minutes and 11 seconds
+
+
+=== Step 6: Merge individual fragileSiteRepaired anchor maps ===
+
+Merging 24 fragileSiteRepaired anchor maps...
+
+Running command: cd /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut; ~/tools/RefAligner -f -if /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/contigs/mergeList.txt -merge -o EXP_REFINEFINAL1_fragileSiteRepaired -minsites 0
+
+
+
+Generating merged stitchPositions BED...done
+
+
+=== Step 7: Process original assembly CMAP and generate new merged CMAP ===
+
+	Running command: cd /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut; ~/tools/RefAligner -f -merge -i /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/EXP_REFINEFINAL1.cmap -selectid 6070 4863 423 7966 2695 7959 7835 5825 4762 4664 8045 4900 7550 8067 7872 5982 5572 6098 6477 8008 519 4144 7798 7178 8084 5661 7762 2184 3301 5307 6302 6362 5153 5430 8082 7190 14719 6103 2910 3562 7751 7860 5611 5462 7977 7051 7660 5873 3779 6643 5915 6803 3062 7253 7844 5332 3067 5721 6538 5213 1773 5767 7452 8064 6582 6153 8086 6757 4408 7175 4232 431 7077 6189 6926 7272 7945 7797 2631 6701 1980 4458 5340 814 6240 8066 7667 4183 7935 7925 8034 6433 8039 4513 1309 6004 14659 6058 5455 5682 7293 7723 7524 7384 5440 7678 6636 4729 7279 5521 5937 3541 2748 3681 8057 7815 8081 6470 7868 3611 657 -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/temp
+
+
+	Running command: cd /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut; ~/tools/RefAligner -f -merge -i /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/temp.cmap -i /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/EXP_REFINEFINAL1_fragileSiteRepaired.cmap -o /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/EXP_REFINEFINAL1_fragileSiteRepaired_merged; rm -f /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/temp.cmap
+
+
+
+=== Step 8: Align fragileSiteRepaired merged CMAP to reference and get stats ===
+
+	Running command: cp /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/runCharacterizeFinal.py ~/scripts/; cd /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/hg19_chromosome_GCTCTTC.cmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_noNGS_noCut/EXP_REFINEFINAL1_fragileSiteRepaired_merged.cmap -p ~/scripts/ -n 48
+
+
+=== Step 9: Run single molecule alignments against fragileSiteRepaired merged cmap ===
+
+Skipping Step 9 Single molecule alignments. Input BNX and/or molecules ERR not provided or does not exist! 
+
+
+=== Step 10: Score stitchPositions BED based on single molecule alignments ===
+
+Skipping Step 10 BED scoring. Input BNX, reference, or fragileSiteRepaired merged CMAP not provided or does not exist! 
+
+
+=== Step 11: Break fragileSiteRepaired merged CMAP at stitchPositions with score less than 1 ===
+
+Disabled Step 11 Breaking fragileSiteRepaired CMAP based on scores. Use --break to enable
+
+
+Skipping Step 12 final characterizeFinal because it is not needed. Input BNX not provided and/or --break not enabled. No such file or directory
+
+
+
+Skipping Step 13 final single molecule alignments. because it is not needed. Input BNX not provided and/or --break not enabled. No such file or directory
+
+
+
+=== Step 14: Re-score final stitchPositions BED based on final single molecule alignments ===
+
+Skipping Step 14 re-score BED because it is not needed. Input BNX not provided and/or --break not enabled. No such file or directory
+
+
+
+=== Step 15: Calculate stats for final merged fragileSiteRepaired CMAP ===
+
+
+Total potential fragile sites: 8887
+	TypeI: 3594 AvgConf: 0.00
+	TypeII: 3591 AvgConf: 0.00
+	TypeV: 1702 AvgConf: 0.00
+Total fragile sites repaired (stitched): 1309
+	TypeI: 923 A
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/split_xmap_standalone.pl /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol/EXP_REFINEFINAL1_fragileSiteRepaired_merged_alignmol.xmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol/EXP_REFINEFINAL1_fragileSiteRepaired_merged_alignmol_q.cmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol/EXP_REFINEFINAL1_fragileSiteRepaired_merged_alignmol_r.cmap EXP_REFINEFINAL1_fragileSiteRepaired_merged_alignmol_contig /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol/contigs
+
+
+
+=== Step 10: Score stitchPositions BED based on single molecule alignments ===
+
+Scoring BED file /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/EXP_REFINEFINAL1_fragileSiteRepaired_stitchPositions.bed based on molecule alignments in /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol/EXP_REFINEFINAL1_fragileSiteRepaired_merged_alignmol.xmap
+
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/scoreStitchPositionsBED_v5.pl --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/EXP_REFINEFINAL1_fragileSiteRepaired_stitchPositions.bed --xmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignref_final/EXP_REFINEFINAL1_fragileSiteRepaired_merged.xmap --qcmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignref_final/EXP_REFINEFINAL1_fragileSiteRepaired_merged_q.cmap --rcmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignref_final/EXP_REFINEFINAL1_fragileSiteRepaired_merged_r.cmap --alignmolxmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol/EXP_REFINEFINAL1_fragileSiteRepaired_merged_alignmol.xmap --alignmolrcmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol/EXP_REFINEFINAL1_fragileSiteRepaired_merged_alignmol_r.cmap --n 48 --output /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/scoreBED/ --fasta /home/users2/psheth/data/UP2153_IrysView2.3/hg19_chromosome.fa --key /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/hg19_chromosome_GCTCTTC_key.txt --bam /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/Clean3t_L7_FR07887821_fix_kmer_q15_TrimN_N0_L70_k96-1kbp.contigs_onlyMappedPrimaryAlign.sort.bam --ngsBonus 10 > /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/scoreBED/EXP_REFINEFINAL1_fragileSiteRepaired_stitchPositions_scored_log.txt 2>&1
+
+
+
+=== Step 11: Break fragileSiteRepaired merged CMAP at stitchPositions with score less than 1 ===
+
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/cutCmapByBedScore.pl --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/scoreBED/EXP_REFINEFINAL1_fragileSiteRepaired_stitchPositions_scored.bed --stats /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/scoreBED/EXP_REFINEFINAL1_fragileSiteRepaired_stitchPositions_scoreStats.csv --cmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/EXP_REFINEFINAL1_fragileSiteRepaired_merged.cmap --prefix EXP_REFINEFINAL1_fragileSiteRepaired_merged_final --threshold 1 --maxfill 30000 --output /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/scoreBED/
+
+
+
+=== Step 12: Align final scored fragileSiteRepaired merged CMAP to reference and get stats ===
+
+	Running command: mv /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignref_final /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignref
+
+	Running command: cp /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/runCharacterizeFinal.py ~/scripts/; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/hg19_chromosome_GCTCTTC.cmap -q /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final.cmap -p ~/scripts/ -n 48
+
+
+
+=== Step 13: Run final single molecule alignments against final scored fragileSiteRepaired merged cmap ===
+
+Running alignment of /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/output/contigs/auto_noise/autoNoise1_rescaled.bnx to /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final.cmap
+
+	Running command: cd /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol_final; ~/tools/RefAligner -i /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/output/contigs/auto_noise/autoNoise1_rescaled.bnx -o EXP_REFINEFINAL1_fragileSiteRepaired_merged_final_alignmol -ref /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final.cmap -f -stdout -stderr -maxthreads 48 -usecolor 1 -FP 0.628953 -FN 0.137026 -sd -0.146904 -sf 0.345096 -sr 0.037687 -res 3.122 -bpp 522.80 -output-veto-filter intervals.txt$ -T 1e-10 -L 130 -nosplit 2 -biaswt 0 -resSD 0.75 -extend 1 -BestRef 1 -maptype 0 -PVres 2 -HSDrange 1.0 -hashoffset 1 -hashMultiMatch 20 -f -deltaX 4 -deltaY 6 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -outlier 0.00001 -endoutlier 1e-3 -outlierMax 40. -cres 5.4 3 0.1 -MaxSE 0.5 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 3 -M 3 3 -MaxSE 0.5 -hash -hashdelta 10 -mres 0.9 -insertThreads 4 -rres 1.2 -maxmem 125 -readparameters /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol/EXP_REFINEFINAL1_fragileSiteRepaired_merged_alignmol.errbin
+
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/split_xmap_standalone.pl /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol_final/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final_alignmol.xmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol_final/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final_alignmol_q.cmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol_final/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final_alignmol_r.cmap EXP_REFINEFINAL1_fragileSiteRepaired_merged_final_alignmol_contig /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol_final/contigs
+
+
+
+
+=== Step 14: Re-score final stitchPositions BED based on final single molecule alignments ===
+
+Scoring final BED file /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/scoreBED/EXP_REFINEFINAL1_fragileSiteRepaired_stitchPositions_scored_final.bed based on molecule alignments in /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol_final/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final_alignmol.xmap
+
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/scoreStitchPositionsBED_v5.pl --bed /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/scoreBED/EXP_REFINEFINAL1_fragileSiteRepaired_stitchPositions_scored_final.bed --xmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignref_final/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final.xmap --qcmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignref_final/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final_q.cmap --rcmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignref_final/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final_r.cmap --alignmolxmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol_final/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final_alignmol.xmap --alignmolrcmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignmol_final/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final_alignmol_r.cmap --n 48 --output /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/scoreBED/ --fasta /home/users2/psheth/data/UP2153_IrysView2.3/hg19_chromosome.fa --key /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/hg19_chromosome_GCTCTTC_key.txt --bam /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/Clean3t_L7_FR07887821_fix_kmer_q15_TrimN_N0_L70_k96-1kbp.contigs_onlyMappedPrimaryAlign.sort.bam --ngsBonus 10 > /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/scoreBED/EXP_REFINEFINAL1_fragileSiteRepaired_stitchPositions_scored_final_scored_log.txt 2>&1
+
+
+
+
+=== Step 15: Calculate stats for final merged fragileSiteRepaired CMAP ===
+
+
+Total potential fragile sites: 8887
+	TypeI: 3594 AvgConf: 0.00
+	TypeII: 3591 AvgConf: 0.00
+	TypeV: 1702 AvgConf: 0.00
+Total fragile sites repaired (stitched) and scored: 1100
+	TypeI: 763 AvgConf: 2.75
+	TypeII: 298 AvgConf: 4.23
+	TypeV: 39 AvgConf: 2.72
+
+Original assembly CMAP /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/EXP_REFINEFINAL1.cmap stats:
+Running command: perl /home/users2/psheth/scripts/HybridScaffold/scripts/calc_cmap_stats.pl /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/EXP_REFINEFINAL1.cmap
+
+Fragile site repaired final merged CMAP /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final.cmap stats:
+Running command: perl /home/users2/psheth/scripts/HybridScaffold/scripts/calc_cmap_stats.pl /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final.cmap
+
+
+
+=== Step 16: Run SV detection on fragileSiteRepaired CMAP ===
+
+	Running command: perl /home/users2/psheth/data/UP2153_IrysView2.3/BNG-FragileSiteRepair/callSV.pl --ref /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/hg19_chromosome_GCTCTTC.cmap --cmap /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final.cmap --errbin /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignref_final/EXP_REFINEFINAL1_fragileSiteRepaired_merged_final.errbin --optarg /home/users2/psheth/scripts/optArguments_human.xml --outdir /home/users2/psheth/data/UP2153_IrysView2.3/UP2153_tumor_prostateTissue_defaultHumanOptArgs/fragileSiteRepair_NGS_Cut/alignref_final_sv --mres 2.0 --n 48 --prefix EXP_REFINEFINAL1_fragileSiteRepaired_merged_final --gaps /home/users2/psheth/data/UP2153_IrysView2.3/hg19_gaps.bed
+
+==SV Summary ==
+
+                 SV type :   N : N/tot
+                 complex :   35 : 0.0105
+                deletion :  252 : 0.0752
+      deletion_duplicate :  291 : 0.0869
+          deletion_nbase :   55 : 0.0164
+        deletion_overlap :    1 : 0.0003
+           deletion_tiny :  429 : 0.1281
+                     end :  525 : 0.1568
+               insertion :  723 : 0.2159
+     insertion_duplicate :  585 : 0.1747
+         insertion_nbase :    3 : 0.0009
+       insertion_overlap :    3 : 0.0009
+          insertion_tiny :  348 : 0.1039
+               inversion :   12 : 0.0036
+     inversion_duplicate :   19 : 0.0057
+         inversion_nbase :   14 : 0.0042
+       inversion_partial :   27 : 0.0081
+        inversion_repeat :    1 : 0.0003
+trans_interchr_duplicate :    4 : 0.0012
+  trans_interchr_overlap :    2 : 0.0006
+   trans_interchr_repeat :    2 : 0.0006
+trans_intrachr_duplicate :    5 : 0.0015
+  translocation_interchr :    6 : 0.0018
+  translocation_intrachr :    7 : 0.0021
+N contigs  :   5022
+N sv total :   3349  (0.6669 per contig)
+N sv filter:   1099  (0.2188 per contig)
+
+
+
+End time: 2015-11-17 04:07:04
+
+Total elapsed time: 1 hour, 43 minutes, and 34 seconds
+
