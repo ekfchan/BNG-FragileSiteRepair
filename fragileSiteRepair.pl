@@ -322,10 +322,10 @@ if (-d $inputs{alignmolDir} && -e $inputs{alignmolDir}) {
 		my $qcmap = $base."_q.cmap";
 		my $rcmap = $base."_r.cmap";
 		if (-e $xmap and -e $qcmap and -e $rcmap) {
-			print "XMAP: $xmap\n";
-			print "QCMAP: $qcmap\n";
-			print "RCMAP: $rcmap\n";
-			print "\n";
+			#print "XMAP: $xmap\n";
+			#print "QCMAP: $qcmap\n";
+			#print "RCMAP: $rcmap\n";
+			#print "\n";
 			
 			$cmd = "perl $scriptspath/alignmolAnalysis.pl -x $xmap -q $qcmap -r $rcmap";
 			print "\tRunning command: $cmd\n";
@@ -619,15 +619,15 @@ if (defined $inputs{bnx} && exists $inputs{bnx} && defined $inputs{err} && exist
 	print "\n";
 }
 else {
-	print "Skipping Step 9 Single molecule alignments. Input BNX and/or molecules ERR not provided or does not exist! $!\n";
+	print "Skipping Step 10 Single molecule alignments. Input BNX and/or molecules ERR not provided or does not exist! $!\n";
 	print "\n";
 }
 
 print "\n";
 
 
-# Step 10: score BED file
-print "=== Step 10: Score stitchPositions BED based on single molecule alignments ===\n\n";
+# Step 11: score BED file
+print "=== Step 11: Score stitchPositions BED based on single molecule alignments ===\n\n";
 
 my $scoredBED = basename($mergedBED,".bed");
 my $scoredSTATS = $scoredBED;
@@ -637,7 +637,7 @@ $scoredSTATS = $scoredSTATS."_scoreStats.csv";
 if (defined $inputs{bnx} && exists $inputs{bnx} && -e $finalmap && exists $inputs{ref} && -e $alignmolErrbin && -e $alignmolXmap && -e $alignmolRmap) {
 	print "Scoring BED file $mergedBED based on molecule alignments in $alignmolXmap\n\n";
 	mkpath("$inputs{output}/scoreBED") or warn "WARNING: Cannot create output directory $inputs{output}/scoreBED: $!\nNext steps may fail...\n";
-	$scoredBED = $inputs{output}."/scoreBED/$scoredBED";
+	my $scoredBED2 = $inputs{output}."/scoreBED/$scoredBED";
 	#Usage: perl scoreStitchPositionsBED_v4.pl <--bed stitchPositions.bed> <--xmap alignref_final.xmap> <--qcmap alignref_final_q.cmap> <--rcmap alignref_final_r.cmap> <--alignmolxmap alignmol.xmap> <--alignmolrcmap alignmol_r.cmap> <--fasta reference.fasta> <--key key file from fa2cmap> <--bam NGSalignments.bam to ref fasta> <--output output directory> <--ngsBuffer bp +/- stitch location to require NGS alignment support =1000> [<--n cpu cores>]
 	$cmd = "perl $scriptspath/scoreStitchPositionsBED_v5.pl --bed $mergedBED --xmap $alignreffinalXmap --qcmap $alignreffinalQcmap --rcmap $alignreffinalRcmap --alignmolxmap $alignmolXmap --alignmolrcmap $alignmolRmap --n $cpuCount --output $inputs{output}/scoreBED/ --fasta $inputs{fasta} --key $inputs{key}";
 	if ($inputs{bam}) {
@@ -652,18 +652,20 @@ if (defined $inputs{bnx} && exists $inputs{bnx} && -e $finalmap && exists $input
 	system($cmd);
 	print "\n"; 
 	$scoredSTATS = $inputs{output}."/scoreBED/$scoredSTATS";
+	copy("$scoredBED2","$inputs{output}/$scoredBED") or die "\nERROR: Copy of $scoredBED2 failed: $!\n";
+	$scoredBED = $scoredBED2;
 }
 else {
-	print "Skipping Step 10 BED scoring. Input BNX, reference, or fragileSiteRepaired merged CMAP not provided or does not exist! $!\n";
+	print "Skipping Step 11 BED scoring. Input BNX, reference, or fragileSiteRepaired merged CMAP not provided or does not exist! $!\n";
 	print "\n";
 }
 print "\n";
 
 
-# Step 11: cut fragileSiteRepaired CMAP where score is too low
-my $newfinalmap="";
-my $newBED="";
-print "=== Step 11: Break fragileSiteRepaired merged CMAP at stitchPositions with score less than $threshold ===\n\n";
+# Step 12: cut fragileSiteRepaired CMAP where score is too low
+my $newfinalmap;
+my $newBED;
+print "=== Step 12: Break fragileSiteRepaired merged CMAP at stitchPositions with score less than $threshold ===\n\n";
 if (defined $inputs{break}) {	
 	my $pre = basename($finalmap, ".cmap")."_final";
 	#$pre = $pre."_final";
@@ -688,24 +690,25 @@ if (defined $inputs{break}) {
 			#$newBED = "$inputs{output}/".basename($scoredBED, ".bed")."_final.bed";
 		}
 		else {
-			print "Skipping Step 11 Breaking fragileSiteRepaired CMAP based on scores. Scored BED and/or stats file not provided or does not exist! $!\n\n";
+			print "Skipping Step 12 Breaking fragileSiteRepaired CMAP based on scores. Scored BED and/or stats file not provided or does not exist! $!\n\n";
 		}
 	}
 	else {
-		print "Skipping Step 11 Breaking fragileSiteRepaired CMAP based on scores. Input BNX, reference, or fragileSiteRepaired merged CMAP not provided or does not exist! $!\n";
+		print "Skipping Step 12 Breaking fragileSiteRepaired CMAP based on scores. Input BNX, reference, or fragileSiteRepaired merged CMAP not provided or does not exist! $!\n";
 		print "\n";
 	}
 }
 else {
-	print "Disabled Step 11 Breaking fragileSiteRepaired CMAP based on scores. Use --break to enable\n";
+	$newBED = $scoredBED;
+	print "Disabled Step 12 Breaking fragileSiteRepaired CMAP based on scores. Use --break to enable\n";
 	print "\n";
 }
 print "\n";
 
 
-# Step 12: run CharacterizeFinal on new final merged CMAP if needed
+# Step 13: run CharacterizeFinal on new final merged CMAP if needed
 if (-e $newfinalmap) {
-	print "=== Step 12: Align final scored fragileSiteRepaired merged CMAP to reference and get stats ===\n\n";
+	print "=== Step 13: Align final scored fragileSiteRepaired merged CMAP to reference and get stats ===\n\n";
 	# move/rename old alignref_final folder
 	$cmd = "mv $inputs{output}/alignref_final $inputs{output}/alignref";
 	print "\tRunning command: $cmd\n\n";
@@ -722,19 +725,19 @@ if (-e $newfinalmap) {
 		$alignreffinalRcmap = "$inputs{output}/alignref_final/$splitprefix"."_fragileSiteRepaired_merged_final_r.cmap";
 	}
 	else {
-		print "Skipping Step 12 final characterizeFinal. Final merged fragileSiteRepaired CMAP or reference CMAP not found! $!\n";
+		print "Skipping Step 13 final characterizeFinal. Final merged fragileSiteRepaired CMAP or reference CMAP not found! $!\n";
 		print "\n";
 	}
 }
 else {
-	print "Skipping Step 12 final characterizeFinal because it is not needed. Input BNX not provided and/or --break not enabled. $!\n\n";
+	print "Skipping Step 13 final characterizeFinal because it is not needed. Input BNX not provided and/or --break not enabled. $!\n\n";
 }
 print "\n";
 
 print "\n";
-# Step 13: run alignmol on new final merged CMAP if needed
+# Step 14: run alignmol on new final merged CMAP if needed
 if (-e $newfinalmap) {
-	print "=== Step 13: Run final single molecule alignments against final scored fragileSiteRepaired merged cmap ===\n\n";
+	print "=== Step 14: Run final single molecule alignments against final scored fragileSiteRepaired merged cmap ===\n\n";
 	$alignmolXmap = "";
 	#$alignmolXmap="";
 	if (defined $inputs{bnx} && exists $inputs{bnx} && defined $inputs{err} && exists $inputs{err}) {
@@ -764,17 +767,17 @@ if (-e $newfinalmap) {
 		print "\n";
 	}
 	else {
-		print "Skipping Step 13 Single molecule alignments. Input BNX not provided or does not exist. $!\n";
+		print "Skipping Step 14 Single molecule alignments. Input BNX not provided or does not exist. $!\n";
 		print "\n";
 	}
 }
 else {
-	print "Skipping Step 13 final single molecule alignments. because it is not needed. Input BNX not provided and/or --break not enabled. $!\n\n";
+	print "Skipping Step 14 final single molecule alignments. because it is not needed. Input BNX not provided and/or --break not enabled. $!\n\n";
 }
 print "\n\n";
 
-# Step 14: re-score final BED file if needed
-print "=== Step 14: Re-score final stitchPositions BED based on final single molecule alignments ===\n\n";
+# Step 15: re-score final BED file if needed
+print "=== Step 15: Re-score final stitchPositions BED based on final single molecule alignments ===\n\n";
 if (-e $newfinalmap && -e $newBED) {
 	
 	my $scoredBED = basename($newBED,".bed");
@@ -782,7 +785,7 @@ if (-e $newfinalmap && -e $newBED) {
 	$scoredBED = $scoredBED."_scored.bed";
 	$scoredSTATS = $scoredSTATS."_scoreStats.csv";
 
-	if (defined $inputs{bnx} && exists $inputs{bnx} && -e $newfinalmap && exists $inputs{ref}) {
+	if (defined $inputs{bnx} && exists $inputs{bnx} && -e $newfinalmap && exists $inputs{ref} && exists $inputs{break}) {
 		print "Scoring final BED file $newBED based on molecule alignments in $alignmolXmap\n\n";
 		#mkpath("$inputs{output}/scoreBED") or warn "WARNING: Cannot create output directory $inputs{output}/scoreBED: $!\nNext steps may fail...\n";
 		$scoredBED = $inputs{output}."/scoreBED/$scoredBED";
@@ -810,18 +813,18 @@ if (-e $newfinalmap && -e $newBED) {
 		
 	}
 	else {
-		print "Skipping Step 14 re-score BED \. Input BNX, reference, or final fragileSiteRepaired merged CMAP not provided or does not exist! $!\n";
+		print "Skipping Step 15 re-score BED \. Input BNX, reference, or final fragileSiteRepaired merged CMAP not provided or does not exist! $!\n";
 		print "\n";
 	}
 }
 else {
-	print "Skipping Step 14 re-score BED because it is not needed. Input BNX not provided and/or --break not enabled. $!\n\n";
+	print "Skipping Step 15 re-score BED because it is not needed. Input BNX not provided and/or --break not enabled. $!\n\n";
 }
 print "\n\n";
 
 
-# Step 15: Calculate stats for merged fragileSiteRepaired BED and CMAP
-print "=== Step 15: Calculate stats for final merged fragileSiteRepaired CMAP ===\n";
+# Step 16: Calculate stats for merged fragileSiteRepaired BED and CMAP
+print "=== Step 16: Calculate stats for final merged fragileSiteRepaired CMAP ===\n";
 print "\n"; 
 
 #generate FASTA of stitchPositions sequences
@@ -854,7 +857,7 @@ my ($origBedOut_ref, $origTypeCount_ref, $origTypeConf_ref) = sortBEDandCount(\@
 my %origTypeCount = %$origTypeCount_ref;
 my %origTypeConf = %$origTypeConf_ref;
 my $origCount = scalar(@origBed);
-print "Total potential fragile sites: $origCount\n";
+print "Total potential predicted fragile sites: $origCount\n";
 foreach my $type (sort keys %origTypeCount) {
 	print "\t$type: $origTypeCount{$type} AvgConf: $origTypeConf{$type}\n";
 }
@@ -927,8 +930,8 @@ else {
 print "\n\n";
 
 
-# Step 16: run SV detection on final cmap
-print "=== Step 16: Run SV detection on fragileSiteRepaired CMAP ===\n\n";
+# Step 17: run SV detection on final cmap
+print "=== Step 17: Run SV detection on fragileSiteRepaired CMAP ===\n\n";
 if (defined $inputs{runSV}) {
 	if ((exists $inputs{cmap}) && (exists $inputs{ref})) {
 		my $errbin = "";
@@ -960,12 +963,12 @@ if (defined $inputs{runSV}) {
 		else { print "WARNING: Merged CMAP $map and/or alignref_final errbin $errbin not found! Skipping Step 16 runSV...\n"; }
 	}
 	else {
-		print "Skipping Step 16. Original assembly CMAP and/or reference CMAP not provided\n";
+		print "Skipping Step 17. Original assembly CMAP and/or reference CMAP not provided\n";
 		print "\n";
 	}
 }
 else {
-	print "Disabled Step 16 SV detection. Add --runSV to enable SV detection\n";
+	print "Disabled Step 17 SV detection. Add --runSV to enable SV detection\n";
 	print "\n";
 }
 print "\n";

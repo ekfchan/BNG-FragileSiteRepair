@@ -30,7 +30,7 @@ Usage: perl fragileSiteRepair.pl [OPTIONS] --fasta <ref.fa> --cmap <assembly.cma
 --maxlab <label count> : Maximum number of reference labels to allow between adjacent maps. Default: 1
 --maxfill <basepairs> : Maximum number of basepairs to allow between adjacent maps. Default: 30000
 --wobble <basepairs> : Maximum number of basepairs to allow the fragile site to vary. Default: 30000
---seq <basepairs> : Number of basepairs of reference sequence +/- fragile site to output into BED file. Default: OFF
+--seq <basepairs> : Number of basepairs of reference sequence +/- predicted fragile site to output into BED file. Default: OFF
 --optArgs <optArguments.xml> : optArguments.xml to use for alignment. Default: ~/scripts/optArguments_human.xml
 --endoutlier <pvalue> : endoutlier penalty for single molecule alignments (see RefAligner -help for more info). Default: 1e-3
 
