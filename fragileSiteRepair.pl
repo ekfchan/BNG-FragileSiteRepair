@@ -3,7 +3,7 @@
 # A wrapper script to run fragile site repair on a BioNano assembly as it aligns to a reference using an input FASTA and assembly CMAP 
 # Assembly maps are stitched together based on alignments if the maps start and stop overlap a fragile site
 
-# Usage: perl fragileSiteRepair.pl --fasta <reference.fasta> --cmap <assembly.cmap> --output <output folder> [--bnx <input.bnx to run alignmol>] [--err <original assembly alignmol_merge.err or autonoise1.err>] [--enzyme <sequence of enzyme to use =GCTCTTC>] [--bam <.bam alignment of NGS reads/contigs to input ref FASTA>] [--ngsBuffer <bp +/- stitchPosition to require NGS alignment =500>] [--threshold <minimum score threshold below which to cut stitched maps =1>] [--maxlab <max_label_gap_tolerence =1>] [--maxfill <max basepairs to fill between contigs =30000>] [--wobble <fragile site wobble in bp =30000>] [--seq <sequence bp +/- fragile site to print in final BED =off>] [--force <overwrite output folder =off>] [--n <number of CPU cores =nproc>] [--j <number of parallel jobs =nproc/6>] [--optArgs <optArguments.xml =optArguments_human.xml>] [--runSV <enable run SV detection =off>]  [--gaps <N-base gaps BED file>] [--break <break maps at stitch locations with score below threshold =off>] [--endoutlier <Pvalue penalty for endoutlier =1e-3>] [--aggressive <calculate TypeIII and TypeIV fragile sites =off>] [--ngsBonus <raw score bonus for supporting NGS alignments =10>] [--breakNGSonly <break maps if stitch has no BioNano support =off>]
+# Usage: perl fragileSiteRepair.pl --fasta <reference.fasta> --cmap <assembly.cmap> --output <output folder> [--bnx <input.bnx to run alignmol>] [--alignmolDir <path/to/assembly/output/contigs/exp_refineFinal1/alignmol/merge>] [--enzyme <sequence of enzyme to use =GCTCTTC>] [--bam <.bam alignment of NGS reads/contigs to input ref FASTA>] [--ngsBuffer <bp +/- stitchPosition to require NGS alignment =500>] [--threshold <minimum score threshold below which to cut stitched maps =1>] [--maxlab <max_label_gap_tolerence =1>] [--maxfill <max basepairs to fill between contigs =30000>] [--wobble <fragile site wobble in bp =30000>] [--seq <sequence bp +/- fragile site to print in final BED =off>] [--force <overwrite output folder =off>] [--n <number of CPU cores =nproc>] [--j <number of parallel jobs =nproc/6>] [--optArgs <optArguments.xml =optArguments_human.xml>] [--runSV <enable run SV detection =off>]  [--gaps <N-base gaps BED file>] [--break <break maps at stitch locations with score below threshold =off>] [--endoutlier <Pvalue penalty for endoutlier =1e-3>] [--aggressive <calculate TypeIII and TypeIV fragile sites =off>] [--ngsBonus <raw score bonus for supporting NGS alignments =10>] [--breakNGSonly <break maps if stitch has no BioNano support =off>]
 
 use strict;
 use warnings;
@@ -22,6 +22,7 @@ use DateTime;
 use DateTime::Format::Human::Duration;
 #use Data::Dumper;
 use PerlIO::Util;
+use Fcntl qw(:flock SEEK_END);
 
 my $dtStart = DateTime->now;
 my $stime = DateTime->now;
@@ -34,7 +35,7 @@ my $mem = 32;
 # << usage statement and variable initialisation >>
 my %inputs = (); 
 $inputs{'force'}=0;
-GetOptions( \%inputs, 'fasta:s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'seq:i', 'cmap:s', 'n:i','j:i','optArgs:s', 'runSV', 'bnx:s', 'threshold:s', 'random', 'err:s', 'break', 'h|help', 'endoutlier:s', 'aggressive', 'enzyme:s', 'bam:s', 'ngsBuffer:i', 'ngsBonus:i', 'breakNGSonly', 'gaps=s'); 
+GetOptions( \%inputs, 'fasta:s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'seq:i', 'cmap:s', 'n:i','j:i','optArgs:s', 'runSV', 'bnx:s', 'threshold:s', 'random', 'alignmolDir:s', 'break', 'h|help', 'endoutlier:s', 'aggressive', 'enzyme:s', 'bam:s', 'ngsBuffer:i', 'ngsBonus:i', 'breakNGSonly', 'gaps=s'); 
 
 my $getSeq = 0;
 my $threshold = 1.0;
@@ -59,7 +60,7 @@ print qx/ps -o args $$/;
 print "\n";
 
 if ( !exists $inputs{fasta} | !exists $inputs{cmap} | !exists $inputs{output} ) {
-	#print "Usage: perl fragileSiteRepair.pl --fasta <reference.fasta> --cmap <assembly.cmap> --output <output folder> [--bnx <input.bnx to run alignmol>] [--err <original assembly alignmol_merge.err or autonoise1.err>] [--enzyme <sequence of enzyme to use =GCTCTTC>] [--bam <.bam alignment of NGS reads/contigs to input ref FASTA>] [--ngsBuffer <bp +/- stitchPosition to require NGS alignment =500>] [--threshold <minimum score threshold below which to cut stitched maps =1>] [--maxlab <max_label_gap_tolerence =1>] [--maxfill <max basepairs to fill between contigs =30000>] [--wobble <fragile site wobble in bp =30000>] [--seq <sequence bp +/- fragile site to print in final BED =off>] [--force <overwrite output folder =off>] [--n <number of CPU cores =nproc>] [--j <number of parallel jobs =nproc/6>] [--optArgs <optArguments.xml =optArguments_human.xml>] [--runSV <enable run SV detection =off>] [--gaps <N-base gaps BED file>] [--break <break maps at stitch locations with score below threshold =off>] [--endoutlier <Pvalue penalty for endoutlier =1e-3>] [--aggressive <calculate TypeIII and TypeIV fragile sites =off>] [--ngsBonus <raw score bonus for supporting NGS alignments =10>] [--breakNGSonly <break maps if stitch has no BioNano support =off>]\n\n"; 
+	#print "Usage: perl fragileSiteRepair.pl --fasta <reference.fasta> --cmap <assembly.cmap> --output <output folder> [--bnx <input.bnx to run alignmol>] [--alignmolDir <path/to/assembly/output/contigs/exp_refineFinal1/alignmol/merge>] [--enzyme <sequence of enzyme to use =GCTCTTC>] [--bam <.bam alignment of NGS reads/contigs to input ref FASTA>] [--ngsBuffer <bp +/- stitchPosition to require NGS alignment =500>] [--threshold <minimum score threshold below which to cut stitched maps =1>] [--maxlab <max_label_gap_tolerence =1>] [--maxfill <max basepairs to fill between contigs =30000>] [--wobble <fragile site wobble in bp =30000>] [--seq <sequence bp +/- fragile site to print in final BED =off>] [--force <overwrite output folder =off>] [--n <number of CPU cores =nproc>] [--j <number of parallel jobs =nproc/6>] [--optArgs <optArguments.xml =optArguments_human.xml>] [--runSV <enable run SV detection =off>] [--gaps <N-base gaps BED file>] [--break <break maps at stitch locations with score below threshold =off>] [--endoutlier <Pvalue penalty for endoutlier =1e-3>] [--aggressive <calculate TypeIII and TypeIV fragile sites =off>] [--ngsBonus <raw score bonus for supporting NGS alignments =10>] [--breakNGSonly <break maps if stitch has no BioNano support =off>]\n\n"; 
 	Usage();
 	print "\n";
 	exit 0; 
@@ -92,7 +93,7 @@ else {
 	print "Maximum memory to use: ", int($mem)," GB\n";
 	print "\n";
 	
-	foreach my $key ("cmap","err","output","fasta", "optArgs", "bnx", "bam", "gaps") {
+	foreach my $key ("cmap","alignmolDir","output","fasta", "optArgs", "bnx", "bam", "gaps") {
 		if (exists $inputs{$key} and $inputs{$key} =~ /[a-z|0-9]/i) {
 			$inputs{$key} = abs_path($inputs{$key});
 		}
@@ -128,7 +129,7 @@ my $splitfastaprefix = basename(abs_path($inputs{fasta}), @suffixlist);
 
 # Make sure dependency scripts exist
 my $scriptspath = abs_path(dirname($0));
-if (!-e "$scriptspath/calcFragileSites.pl" | !-e "$scriptspath/split_xmap_standalone.pl" | !-e "$scriptspath/gapFill.pl" | !-e "$scriptspath/extractFASTA_fromBED.pl" | !-e "$scriptspath/runCharacterizeFinal.py" | !-e "$scriptspath/callSV.pl" | !-e "$scriptspath/scoreStitchPositionsBED_v5.pl" | !-e "$scriptspath/cutCmapByBedScore.pl" | !-e "$scriptspath/fa2cmap_multi_color.pl") {
+if (!-e "$scriptspath/calcFragileSites.pl" | !-e "$scriptspath/split_xmap_standalone.pl" | !-e "$scriptspath/gapFill.pl" | !-e "$scriptspath/extractFASTA_fromBED.pl" | !-e "$scriptspath/runCharacterizeFinal.py" | !-e "$scriptspath/callSV.pl" | !-e "$scriptspath/scoreStitchPositionsBED_v5.pl" | !-e "$scriptspath/cutCmapByBedScore.pl" | !-e "$scriptspath/fa2cmap_multi_color.pl" | !-e "$scriptspath/alignmolAnalysis.pl") {
 	die "ERROR: Dependency scripts not found at $scriptspath\n"; 
 }
 if( !-e $ENV{"HOME"}."/tools/RefAligner" | !-e $ENV{"HOME"}."/scripts/HybridScaffold/scripts/calc_cmap_stats.pl" | !-e $ENV{"HOME"}."/scripts/optArguments_human.xml" | !-e $ENV{"HOME"}."/scripts/runSV.py") {
@@ -151,8 +152,12 @@ print "Input assembly CMAP: $inputs{cmap}\n";
 if( !exists $inputs{optArgs} ) { $inputs{optArgs} = abs_path($ENV{"HOME"}."/scripts/optArguments_human.xml"); }
 print "Using optArguments: $inputs{optArgs}\n";
 
+if (-d $inputs{alignmolDir} && -e $inputs{alignmolDir}) {
+	$inputs{err} = "$inputs{alignmolDir}/EXP_REFINEFINAL1_merge.err";
+	print "\nInput alignmolDir: $inputs{alignmolDir}\n";
+}
 if (exists $inputs{bnx} && exists $inputs{err}) {
-	print "\nInput BNX: $inputs{bnx}\n";
+	print "Input BNX: $inputs{bnx}\n";
 	print "Input molecules ERR: $inputs{err}\n";
 	print "\tUsing -endoutlier $inputs{endoutlier} for single molecule alignments\n"; }
 else {
@@ -256,8 +261,104 @@ $dtime = DateTime::Format::Human::Duration->new();
 print 'Spent time at this step: ', $dtime->format_duration_between($etime, $stime); print "\n\n";
 print "\n";
 
-# Step 5: Run gapFill.pl for each anchor map
-print "=== Step 5: Run gapFill.pl for each anchor XMAP ===\n";
+
+## Step 5: Run alignmolAnalysis.pl for each genome map
+#print "=== Step 5: Run alignmolAnalysis.pl for each genome map ===\n";
+#if (-d $inputs{alignmolDir} && -e $inputs{alignmolDir}) {
+	#$stime = DateTime->now;
+	#$cmd = "cd $inputs{alignmolDir}; for f in *.xmap; do perl $scriptspath/alignmolAnalysis.pl -x \$f -q \${f%.xmap}_q.cmap -r \${f%.xmap}_r.cmap; done > $inputs{output}/alignmolAnalysisOut.txt";
+	#print "\nRunning command: $cmd\n\n";
+	#system($cmd);
+	#$etime = DateTime->now;
+	#$dtime = DateTime::Format::Human::Duration->new();
+	#print 'Spent time at this step: ', $dtime->format_duration_between($etime, $stime); print "\n\n";
+	#print "\n";
+
+#}
+#else {
+	#print "--alignmolDir not specified. Skipping Step 5...\n";
+#}
+
+# Step 5: Run alignmolAnalysis.pl for each genome map
+print "=== Step 5: Run alignmolAnalysis.pl for each genome map ===\n";
+if (-d $inputs{alignmolDir} && -e $inputs{alignmolDir}) {
+	$stime = DateTime->now;
+	my @xmaps = findXMAPs($inputs{alignmolDir});
+	@xmaps = sort @xmaps;
+	print "\n";
+	print "Found ".scalar(@xmaps)." maps in $inputs{alignmolDir}\n\n";
+	
+	## normal sequential processing
+
+	#foreach my $xmap (@xmaps) {
+		#$xmap = abs_path("$inputs{alignmolDir}/$xmap");
+		#my $base = $xmap; $base =~ s/.xmap//i;
+		#my $qcmap = $base."_q.cmap";
+		#my $rcmap = $base."_r.cmap";
+		#if (-e $xmap and -e $qcmap and -e $rcmap) {
+			##print "XMAP: $xmap\n";
+			##print "QCMAP: $qcmap\n";
+			##print "RCMAP: $rcmap\n";
+			##print "\n";
+			
+			#$cmd = "perl $scriptspath/alignmolAnalysis.pl -x $xmap -q $qcmap -r $rcmap >> $inputs{output}/alignmolAnalysisOut.txt";
+			#print "Running command: $cmd\n";
+			#print "\n";
+			#system($cmd);
+		#}	
+	#}
+
+	# using Parallel::ForkManager
+	print "Processing genome maps in parallel fashion...\n";
+	print "\n";
+	my $pm =  new Parallel::ForkManager($cpuCount);
+	#my $pm =  new Parallel::ForkManager($jobs);
+	foreach my $xmap (@xmaps) {
+		$pm->start and next; # do the fork
+		# do work
+		$xmap = abs_path("$inputs{alignmolDir}/$xmap");
+		my $base = $xmap; $base =~ s/.xmap//i;
+		#print "Base: $base\n";
+		my $qcmap = $base."_q.cmap";
+		my $rcmap = $base."_r.cmap";
+		if (-e $xmap and -e $qcmap and -e $rcmap) {
+			print "XMAP: $xmap\n";
+			print "QCMAP: $qcmap\n";
+			print "RCMAP: $rcmap\n";
+			print "\n";
+			
+			$cmd = "perl $scriptspath/alignmolAnalysis.pl -x $xmap -q $qcmap -r $rcmap";
+			print "\tRunning command: $cmd\n";
+			print "\n";
+			#system($cmd) or die "ERROR: $cmd failed: $!\n";
+			my @result = capture($cmd);
+			my $out = "$inputs{output}/alignmolAnalysisOut.txt";
+			open OUT, "+>>$out" or die "ERROR: Cannot open $out for writing! $!\n";
+			flock (OUT, LOCK_EX) or die "ERROR: Cannot open $out for locking! $!\n";
+			seek (OUT, 0, 2);
+			print OUT join("\n", @result);
+			flock(OUT, LOCK_UN) or die "ERROR: Cannot unlock $out! $!\n";
+			close OUT;
+			#print "\n";
+		}
+		$pm->finish; # do the exit in the child process
+	}
+	print "Waiting for all processes to finish...\n";
+	print "\n";
+	$pm->wait_all_children;
+	
+	
+	
+	$etime = DateTime->now;
+	$dtime = DateTime::Format::Human::Duration->new();
+	print 'Spent time at this step: ', $dtime->format_duration_between($etime, $stime); print "\n\n";
+}
+else {
+	print "--alignmolDir not specified. Skipping Step 5...\n";
+}
+
+# Step 6: Run gapFill.pl for each anchor map
+print "=== Step 6: Run gapFill.pl for each anchor XMAP ===\n";
 print "Processing anchor maps in parallel fashion...\n";
 print "\n";
 $stime = DateTime->now;
@@ -312,8 +413,8 @@ foreach my $xmap (@xmaps) {
 		print "RCMAP: $rcmap\n";
 		print "\n";
 		
-		# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n CPU cores to use]
-		$cmd = "perl $scriptspath/gapFill.pl -x $xmap -q $qcmap -r $rcmap -e $inputs{errbin} -o $base"."_fragileSiteRepaired --bed $bed --maxlab $inputs{maxlab} --maxfill $inputs{maxfill} --wobble $inputs{wobble} --n $cpuCount";
+		# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n CPU cores to use] [--alignmolAnalysis <alignmolAnalysisOut.txt>]
+		$cmd = "perl $scriptspath/gapFill.pl -x $xmap -q $qcmap -r $rcmap -e $inputs{errbin} -o $base"."_fragileSiteRepaired --bed $bed --maxlab $inputs{maxlab} --maxfill $inputs{maxfill} --wobble $inputs{wobble} --n $cpuCount --alignmolAnalysis $inputs{output}/alignmolAnalysisOut.txt";
 		print "\tRunning command: $cmd\n";
 		print "\n";
 		#system($cmd) or die "ERROR: $cmd failed: $!\n";
@@ -371,8 +472,8 @@ print 'Spent time at this step: ', $dtime->format_duration_between($etime, $stim
 ##});
 
 
-# Step 6: Merge individual fragileSiteRepaired anchor maps and stitched BEDs
-print "\n=== Step 6: Merge individual fragileSiteRepaired anchor maps ===\n\n";
+# Step 7: Merge individual fragileSiteRepaired anchor maps and stitched BEDs
+print "\n=== Step 7: Merge individual fragileSiteRepaired anchor maps ===\n\n";
 my @qcmaps = findQCMAPs($inputs{output}."/contigs");
 @qcmaps = sort @qcmaps;
 
@@ -436,8 +537,8 @@ close BEDOUT;
 print "done\n\n";
 print "\n";
 
-# Step 7: Generate new merged cmap with unmapped maps
-print "=== Step 7: Process original assembly CMAP and generate new merged CMAP ===\n\n";
+# Step 8: Generate new merged cmap with unmapped maps
+print "=== Step 8: Process original assembly CMAP and generate new merged CMAP ===\n\n";
 	if (exists $inputs{cmap}) {
 	my @origCmapIds = getCmapIds($inputs{cmap});
 	my @qryCmapIds = getCmapIds($inputs{qcmap});
@@ -466,8 +567,8 @@ print "=== Step 7: Process original assembly CMAP and generate new merged CMAP =
 }
 print "\n";
 
-# Step 8: run CharacterizeFinal on newly merged cmap
-print "=== Step 8: Align fragileSiteRepaired merged CMAP to reference and get stats ===\n\n";
+# Step 9: run CharacterizeFinal on newly merged cmap
+print "=== Step 9: Align fragileSiteRepaired merged CMAP to reference and get stats ===\n\n";
 if (-e $finalmap && (exists $inputs{ref})) {
 	#copy("$inputs{ref}","$inputs{output}") or print "WARNING: Copy of input reference $inputs{ref} failed: $!\n"; 
 	# my $newMap = "$inputs{output}"."/"."$splitprefix"."_fragileSiteRepaired_merged.cmap";
@@ -483,10 +584,10 @@ my $alignreffinalQcmap = "$inputs{output}/alignref_final/$splitprefix"."_fragile
 my $alignreffinalRcmap = "$inputs{output}/alignref_final/$splitprefix"."_fragileSiteRepaired_merged_r.cmap";
 
 
-# Step 9: align molecules to merged fragileSiteRepaired CMAP
+# Step 10: align molecules to merged fragileSiteRepaired CMAP
 my $alignmolDir="";
 my $alignmolErrbin="";
-print "=== Step 9: Run single molecule alignments against fragileSiteRepaired merged cmap ===\n\n";
+print "=== Step 10: Run single molecule alignments against fragileSiteRepaired merged cmap ===\n\n";
 my $alignmolXmap="";
 my $alignmolRmap="";
 if (defined $inputs{bnx} && exists $inputs{bnx} && defined $inputs{err} && exists $inputs{err}) {
@@ -911,6 +1012,9 @@ sub sortBEDandCount {
 		if ($s[3] =~ m/Type/i) {
 			$typeCount{$s[3]}++;
 		}
+		elsif ($s[3] =~ m/Observed/i) {
+			$typeCount{$s[3]}++;
+		}
 		if (!exists $typeConf{$s[3]}) {
 			$typeConf{$s[3]} = $s[4];
 		}
@@ -1090,7 +1194,7 @@ sub Usage {
 	print "\n";
 	print "\t=== KEY OPTIONS ===\n";
 	print "\t--bnx <.bnx> : input NMX used for assembly. Requires --err to perform single molecule alignments. Default: OFF\n";
-	print "\t--err <.err> : molecules ERR file from assembly alignmol/merge OR autoNoise1. Requires --bnx to perform single molecule alignments. Default: OFF\n";
+	print "\t--alignmolDir <path/to/assembly/output/contigs/exp_refineFinal1/alignmol/merge> : directory containing molecules aligned to assembly maps XMAPs and ERR file. Requires --bnx to perform single molecule alignment scoring. Default: NONE\n";
 	print "\t--bam <.bam> : BAM file of NGS scaffolds/contigs/reads aligned to --fasta. Used to supplement scoring of stitchPositions. Default: OFF\n";
 	print "\n";
 	print "\t--break : Flag to enable breaking of maps at stitchPositions with score less than threshold value. Requires --bnx and --err. Default: OFF\n";

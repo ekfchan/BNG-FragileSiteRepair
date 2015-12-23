@@ -11,9 +11,9 @@ Usage: perl fragileSiteRepair.pl [OPTIONS] --fasta <ref.fa> --cmap <assembly.cma
 --output <path/to/output> : output folder
 
 === KEY OPTIONS ===
---bnx <.bnx> : input BNX used for assembly. Requires --err to perform single molecule alignments. Default: OFF
---err <.err> : molecules ERR file from assembly alignmol/merge OR autoNoise1. Requires --bnx to perform single molecule alignments. Default: OFF
---bam <.bam> : BAM file of NGS scaffolds/contigs/reads aligned to --fasta. Used to supplement scoring of stitchPositions. Default: OFF
+--bnx <.bnx> : input BNX used for assembly. Requires --err to perform single molecule alignments. Default: NONE
+--alignmolDir <path/to/assembly/output/contigs/exp_refineFinal1/alignmol/merge> : directory containing molecules aligned to assembly maps XMAPs and ERR file. Requires --bnx to perform single molecule alignment scoring. Default: NONE  
+--bam <.bam> : BAM file of NGS scaffolds/contigs/reads aligned to --fasta. Used to supplement scoring of stitchPositions. Default: NONE
 
 --break : Flag to enable breaking of maps at stitchPositions with score less than threshold value. Requires --bnx and --err. Default: OFF
 --runSV : Flag to run SV module on final cmap. Default: OFF
@@ -24,9 +24,9 @@ Usage: perl fragileSiteRepair.pl [OPTIONS] --fasta <ref.fa> --cmap <assembly.cma
 === OTHER OPTIONS ===
 --enzyme <nickase sequence> : Nickase enzyme for in-silico digestion and fragile site prediction. Default: GCTCTTC
 --ngsBuffer <basepairs> : Number of basepairs that a single NGS alignment must extend past the ends of a stitchPosition to supplement score. Default: 500
---ngsBonus <raw score value> : Score bonus for each NGS alignment supporting a fragile site repair. Default: 10
+--ngsBonus <raw score value> : Score bonus for each NGS alignment supporting a fragile site repair [NOTE: see documentation for details on raw scoring for BIoNano molecules]. Default: 10
 --breakNGSonly : Flag to break maps at stitchPositions that have only NGS alignment support and no BioNano single molecule support. Default: OFF
---threshold <scaled score> : Minimum stitchPoisitons scaled score below which to break maps. Default: 1.0
+--threshold <scaled score> : Minimum stitchPoisitons scaled score below which to break maps. Scaled score=Raw Score/10. Default: 1.0
 --maxlab <label count> : Maximum number of reference labels to allow between adjacent maps. Default: 1
 --maxfill <basepairs> : Maximum number of basepairs to allow between adjacent maps. Default: 30000
 --wobble <basepairs> : Maximum number of basepairs to allow the fragile site to vary. Default: 30000
