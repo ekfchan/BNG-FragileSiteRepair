@@ -2,7 +2,7 @@
 
 # A wrapper script to gap-fill: stitch together genome maps that are sufficiently close to each other and (optionally) overlapping fragile sites as predicted from reference genome map.
 
-# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n <CPU cores to use>] [--alignmolAnalysis alignmolAnalysisOut.txt]
+# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n <CPU cores to use>] [--alignmolAnalysis alignmolAnalysisOut.txt] [--minRatio <minRatio for single molecules =0.90>]
 
 # Details: 
 # * Assumption: that contigs on XMAP is being read from left to right and is sorted by RefStartPos
@@ -31,7 +31,7 @@ print "\n";
 
 ## << usage statement and variable initialisation >>
 my %inputs = (); 
-GetOptions( \%inputs, 'x|xmap=s', 'q|qcmap=s', 'r|rcmap=s', 'e|errbin=s', 'o|output|prefix=s', 'bed|b:s', 'round:i', 'maxlab:i', 'maxfill:i', 'wobble:i', 'n:i', 'alignmolAnalysis=s'); 
+GetOptions( \%inputs, 'x|xmap=s', 'q|qcmap=s', 'r|rcmap=s', 'e|errbin=s', 'o|output|prefix=s', 'bed|b:s', 'round:i', 'maxlab:i', 'maxfill:i', 'wobble:i', 'n:i', 'alignmolAnalysis=s', 'minRatio=s'); 
 
 if( !exists $inputs{x} | !exists $inputs{q} | !exists $inputs{r} | !exists $inputs{e} | !exists $inputs{o} ) {
 	print "Usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n <CPU cores to use>] [--alignmolAnalysis alignmolAnalysisOut.txt]
@@ -50,6 +50,8 @@ my $wobble = $maxBp;
 if( exists $inputs{wobble} ) { $wobble = $inputs{wobble}; }
 my $maxlab = 1; 
 if( exists $inputs{maxlab} ) { $maxlab = $inputs{maxlab}; }
+
+if( !exists $inputs{minRatio} || $inputs{minRatio}>1 || $inputs{minRatio}<0 ) { $inputs{minRatio} = 0.90; }
 
 
 open XMAP, $inputs{x} or die "ERROR: $!\n";
@@ -586,7 +588,7 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 							}
 							print "\tQryContigID: $firstQryContigID EndRatio: $firstRatio  QryContigID: $secondQryContigID StartRatio: $secondRatio\n";
 							
-							my $minRatio=0.90;
+							my $minRatio = $inputs{minRatio} + 0;
 							if ($firstRatio >= $minRatio && $secondRatio >= $minRatio && $labelsDistance <= 0) {
 								print "\t\tFragile site observed at genome map ends\n";
 								push @firstContigList,$firstQryContigID;
