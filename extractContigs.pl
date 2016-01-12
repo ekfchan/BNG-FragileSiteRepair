@@ -59,7 +59,10 @@ my $missedLabelPos = 0;
 if (defined $ARGV[12] && $ARGV[12]>0) {
 	$missedLabelPos = $ARGV[12];
 }
-
+my $labelsDistance = 0;
+if (defined $ARGV[13]) {
+	$labelsDistance = $ARGV[13];
+}
 
 #read input XMAP
 while (my $line = <FILE>) {
@@ -127,9 +130,9 @@ else {
 #run script to merge two contigs
 # mod: eva chan, 8 july 2015, assuming path of extractContigs.pl to be same as gapFill.pl (rather than in ../)
 #my $mergeScript = Cwd::abs_path("../mergeContigs.pl");
-my $mergeScript = $scriptspath."/mergeContigs.pl";
+my $mergeScript = $scriptspath."/mergeContigs_v2.pl";
 
-my @ARGS = ($ARGV[1], $ARGV[3], $firstContigAlignment{'Orientation'}, $ARGV[4], $secondContigAlignment{'Orientation'}, $padding, $missedLabelPadding);
+my @ARGS = ($ARGV[1], $ARGV[3], $firstContigAlignment{'Orientation'}, $ARGV[4], $secondContigAlignment{'Orientation'}, $padding, $missedLabelPadding, $labelsDistance);
 print "Running command: ".$^X." $mergeScript ". join(" ",@ARGS)."\n";
 system($^X, "$mergeScript", @ARGS);
 

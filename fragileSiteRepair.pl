@@ -35,7 +35,7 @@ my $mem = 32;
 # << usage statement and variable initialisation >>
 my %inputs = (); 
 $inputs{'force'}=0;
-GetOptions( \%inputs, 'fasta:s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'seq:i', 'cmap:s', 'n:i','j:i','optArgs:s', 'runSV', 'bnx:s', 'threshold:s', 'random', 'alignmolDir:s', 'break', 'h|help', 'endoutlier:s', 'minRatio:s','aggressive', 'enzyme:s', 'bam:s', 'ngsBuffer:i', 'ngsBonus:i', 'breakNGSonly', 'gaps=s'); 
+GetOptions( \%inputs, 'fasta:s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'seq:i', 'cmap:s', 'n:i','j:i','optArgs:s', 'runSV', 'bnx:s', 'threshold:s', 'random', 'alignmolDir:s', 'break', 'h|help', 'endoutlier:s', 'minRatio:s','maxOverlap:i','aggressive', 'enzyme:s', 'bam:s', 'ngsBuffer:i', 'ngsBonus:i', 'breakNGSonly', 'gaps=s','maxOverlapLabels:i'); 
 
 my $getSeq = 0;
 my $threshold = 1.0;
@@ -118,7 +118,11 @@ else {
 	
 	if( !exists $inputs{endoutlier} ) { $inputs{endoutlier} = "0"; }
 	
-	if( !exists $inputs{minRatio} ) { $inputs{minRatio} = 0.90; }
+	if( !exists $inputs{minRatio} ) { $inputs{minRatio} = 0.70; }
+
+	if( !exists $inputs{maxOverlap} ||  $inputs{maxOverlap}<0) { $inputs{maxOverlap} = 0; }
+
+	if( !exists $inputs{maxOverlapLabels} ||  $inputs{maxOverlapLabels}<0) { $inputs{maxOverlapLabels} = 5; }
 	
 	if ( !exists $inputs{enzyme} ) { $inputs{enzyme} = "GCTCTTC"; }
 	
@@ -155,7 +159,10 @@ if( !exists $inputs{optArgs} ) { $inputs{optArgs} = abs_path($ENV{"HOME"}."/scri
 print "Using optArguments: $inputs{optArgs}\n";
 
 if (-d $inputs{alignmolDir} && -e $inputs{alignmolDir}) {
-	$inputs{err} = "$inputs{alignmolDir}/EXP_REFINEFINAL1_merge.err";
+	opendir(DIR, $inputs{alignmolDir});
+	my @errList = grep(/\.err$/,readdir(DIR));
+	closedir(DIR);
+	$inputs{err} = "$inputs{alignmolDir}/$errList[0]";
 	print "\nInput alignmolDir: $inputs{alignmolDir}\n";
 	print "\tminRatio: $inputs{minRatio} for single molecule alignments at genome map ends\n";
 }
@@ -173,6 +180,8 @@ print "Output folder: $inputs{output}\n\n";
 print "Maximum labels between maps: $inputs{maxlab}\n";
 print "Maximum basepairs to fill between maps: $inputs{maxfill}\n";
 print "Maximum fragile site wobble: $inputs{wobble}\n";
+print "Maximum overlap bp between maps: $inputs{maxOverlap}\n";
+print "Maximum overlap labels between maps: $inputs{maxOverlapLabels}\n";
 print "\n";
 
 if (exists $inputs{runSV}) { print "SV module enabled\n\n"; }
@@ -417,7 +426,7 @@ foreach my $xmap (@xmaps) {
 		print "\n";
 		
 		# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n CPU cores to use] [--alignmolAnalysis <alignmolAnalysisOut.txt>]
-		$cmd = "perl $scriptspath/gapFill.pl -x $xmap -q $qcmap -r $rcmap -e $inputs{errbin} -o $base"."_fragileSiteRepaired --bed $bed --maxlab $inputs{maxlab} --maxfill $inputs{maxfill} --wobble $inputs{wobble} --n $cpuCount --alignmolAnalysis $inputs{output}/alignmolAnalysisOut.txt --minRatio $inputs{minRatio}";
+		$cmd = "perl $scriptspath/gapFill.pl -x $xmap -q $qcmap -r $rcmap -e $inputs{errbin} -o $base"."_fragileSiteRepaired --bed $bed --maxlab $inputs{maxlab} --maxfill $inputs{maxfill} --wobble $inputs{wobble} --n $cpuCount --alignmolAnalysis $inputs{output}/alignmolAnalysisOut.txt --minRatio $inputs{minRatio} --maxOverlap $inputs{maxOverlap} --maxOverlapLabels $inputs{maxOverlapLabels}";
 		print "\tRunning command: $cmd\n";
 		print "\n";
 		#system($cmd) or die "ERROR: $cmd failed: $!\n";
@@ -620,6 +629,7 @@ if (defined $inputs{bnx} && exists $inputs{bnx} && defined $inputs{err} && exist
 	print "\n\tRunning command: $cmd\n\n";
 	system($cmd);
 	print "\n";
+	copy("$inputs{err}","$alignmolDir/contigs/") or die "\nERROR: Copy of $inputs{err} failed: $!\n";
 }
 else {
 	print "Skipping Step 10 Single molecule alignments. Input BNX and/or molecules ERR not provided or does not exist! $!\n";
@@ -1222,6 +1232,8 @@ sub Usage {
 	print "\t--optArgs <optArguments.xml> : optArguments.xml to use for alignment. Default: ~/scripts/optArguments_human.xml\n";
 	print "\t--endoutlier <pvalue> : endoutlier penalty for single molecule alignments. Default: 1e-3\n";
 	print "\t--minRatio <ratio> : minimum ratio of single molecule alignments that must end at genome maps ends to be classified as a potential fragile site. Requires --alignmolDir. Default: 0.90\n";
+	print "\t--maxOverlap <bp> : maximum number of basepairs overlap between maps to allow merge. Default: 0\n";
+	print "\t--maxOverlapLabels <int labels> : maximum number of labels overlap between maps to allow merge. Default: 5\n";
 	print "\n";
 	print "\t--n <CPU cores> : Maximum number of CPU cores/threads to use. Default: nproc\n";
 	print "\t--j <number jobs> : Maximum number of parallel jobs. Default: nproc/6\n";
