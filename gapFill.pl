@@ -2,7 +2,7 @@
 
 # A wrapper script to gap-fill: stitch together genome maps that are sufficiently close to each other and (optionally) overlapping fragile sites as predicted from reference genome map.
 
-# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n <CPU cores to use>]
+# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n <CPU cores to use>] [--alignmolAnalysis alignmolAnalysisOut.txt] [--minRatio <minRatio for single molecules =0.70>]
 
 # Details: 
 # * Assumption: that contigs on XMAP is being read from left to right and is sorted by RefStartPos
@@ -23,6 +23,7 @@ use Getopt::Long qw(:config bundling);
 use Sys::Info;
 use Sys::Info::Constants qw( :device_cpu );
 use Sys::MemInfo qw(totalmem freemem totalswap);
+use Fcntl qw(:flock SEEK_END);
 
 print "\n";
 print qx/ps -o args $$/;
@@ -30,14 +31,16 @@ print "\n";
 
 ## << usage statement and variable initialisation >>
 my %inputs = (); 
-GetOptions( \%inputs, 'x|xmap=s', 'q|qcmap=s', 'r|rcmap=s', 'e|errbin=s', 'o|output|prefix=s', 'bed|b:s', 'round:i', 'maxlab:i', 'maxfill:i', 'wobble:i', 'n:i'); 
+GetOptions( \%inputs, 'x|xmap=s', 'q|qcmap=s', 'r|rcmap=s', 'e|errbin=s', 'o|output|prefix=s', 'bed|b:s', 'round:i', 'maxlab:i', 'maxfill:i', 'wobble:i', 'n:i', 'alignmolAnalysis=s', 'minRatio=s', 'maxOverlap:i', 'maxOverlapLabels:i'); 
 
 if( !exists $inputs{x} | !exists $inputs{q} | !exists $inputs{r} | !exists $inputs{e} | !exists $inputs{o} ) {
-	print "Usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n <CPU cores to use>]\n"; 
+	print "Usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n <CPU cores to use>] [--alignmolAnalysis alignmolAnalysisOut.txt]
+\n"; 
 	exit 0; 
 }
 
 my $scriptspath = Cwd::abs_path(dirname($0));	#gapFill.pl relies on two additional scripts (extractContigs.pl and mergeContigs.pl) and assumes thay are available from the same directory as gapFill.pl
+
 
 ## Default values
 if( !exists $inputs{round} ) { $inputs{round} = 1; }
@@ -47,6 +50,12 @@ my $wobble = $maxBp;
 if( exists $inputs{wobble} ) { $wobble = $inputs{wobble}; }
 my $maxlab = 1; 
 if( exists $inputs{maxlab} ) { $maxlab = $inputs{maxlab}; }
+
+if( !exists $inputs{minRatio} || $inputs{minRatio}>1 || $inputs{minRatio}<0 ) { $inputs{minRatio} = 0.70; }
+
+if( !exists $inputs{maxOverlap} || $inputs{maxOverlap}<0 ) { $inputs{maxOverlap} = 0; }
+
+if( !exists $inputs{maxOverlapLabels} || $inputs{maxOverlapLabels}<0 ) { $inputs{maxOverlapLabels} = 5; }
 
 
 open XMAP, $inputs{x} or die "ERROR: $!\n";
@@ -85,6 +94,7 @@ my @thickEndList = ();
 my @itemRgbaList = ();
 my @seqList = ();
 my %missedLabelsPos;
+my @labelsDistanceList = ();
 
 my $idOffset = 100000;
 
@@ -292,6 +302,45 @@ if( exists $inputs{bed} ) {
 	}
 }
 
+
+## << alignmolAnalysis file >> 
+# IF alignmolAnalysis is present, also merge contigs that show molecule alignment evidence of fragile site
+
+my $hasalignmol = 0; 
+my @alignmol;
+my $alignmolMaps = 0;
+
+if( exists $inputs{alignmolAnalysis} ) {
+	$hasalignmol = 1; 
+	my $alignmolFile = Cwd::abs_path($inputs{alignmolAnalysis});
+	print "alignmolAnalysis file $alignmolFile provided. Also using single molecule evidence of fragile sites to merge contigs...\n";
+
+	#read in alignmolAnalysis file
+	open ALIGNMOL, "$alignmolFile" or die $!;
+	while (my $line = <ALIGNMOL>) {
+			chomp($line);
+			#if header then skip
+			if ($line =~ /^#/) {
+				next; }
+			else {
+				my @s = split(/\t/,$line);
+				$alignmolMaps++;
+				#CMapId	StartRatio	EndRatio
+				my %alignmol_line = (
+						"CMapId"  => "$s[0]",
+						"StartRatio" => "$s[1]", 
+						"EndRatio"  => "$s[2]"
+				);
+				push @alignmol, \%alignmol_line;
+			}
+	}
+	my @alignmol =  sort { $a->{'CMapId'} <=> $b->{'CMapId'} } @alignmol;
+	print scalar(@alignmol)." alignmol maps identified in $alignmolFile \n";
+	close ALIGNMOL; 
+}
+
+
+
 ## << calculate distance in labels between each adjacent alignments >> 
 # Generate list of contigs to be merged
 
@@ -316,11 +365,18 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 		my $secondOrientation = $xmap[$i+1]->{'Orientation'};
 		my $secondQryStartPos = $xmap[$i+1]->{'QryStartPos'};
 		my $secondQryEndPos = $xmap[$i+1]->{'QryEndPos'};
-		print "\nConsidering merge between XmapEntryID: $id1 QryContigID: $firstQryContigID and XmapEntryID: $id2 QryContigID: $secondQryContigID Distance: ".abs($secondRefStartPos - $firstRefEndPos)."\n";
-		if (($secondRefStartPos >= $firstRefEndPos) && ($secondRefEndPos >= $firstRefEndPos) && ($secondRefStartPos >= $firstRefStartPos) && ($secondRefEndPos >= $firstRefStartPos)) {
+		my $posDistance = $secondRefStartPos - $firstRefEndPos;
+		print "\nConsidering merge between XmapEntryID: $id1 QryContigID: $firstQryContigID and XmapEntryID: $id2 QryContigID: $secondQryContigID Distance: $posDistance\n";
+
+		if (
+			(($secondRefStartPos >= $firstRefEndPos) && ($secondRefEndPos >= $firstRefEndPos) && ($secondRefStartPos >= $firstRefStartPos) && ($secondRefEndPos >= $firstRefStartPos))
+			||
+			( (abs($secondRefStartPos-$firstRefEndPos)<=$inputs{maxOverlap}) && ($secondRefEndPos >= $firstRefEndPos) && ($secondRefStartPos >= $firstRefStartPos) && ($secondRefEndPos >= $firstRefStartPos) )
+		) {
 		print "\tOverlap filter: PASS\n";
-		if (abs($secondRefStartPos - $firstRefEndPos) <= $maxBp) {
-			print "\tDistance filter: PASS\n";
+
+		if ( $posDistance <= $maxBp ) {
+			print "\tDistance filter: PASS Distance: $posDistance\n";
 			
 			#check to make sure that the alignment extends to start/end of contig
 			my $firstQryStartPosSite;
@@ -362,7 +418,7 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 			}
 			my $labelsDistance = $secondRefStartPosSite - $firstRefEndPosSite - 1;
 			print "\tLabels: $labelsDistance\n";
-			if ($labelsDistance <= $maxlab) {
+			if ( ($posDistance>=0 && $labelsDistance<=$maxlab) || ($posDistance<0 && abs($labelsDistance)<=$inputs{maxOverlapLabels}) ) {
 				print "\tLabel filter: PASS\n";		
 					
 				if ( (grep {$_ eq $firstQryContigID} @firstContigList) || (grep {$_ eq $firstQryContigID} @secondContigList) || (grep {$_ eq $secondQryContigID} @secondContigList) || (grep {$_ eq $secondQryContigID} @firstContigList)) {
@@ -372,9 +428,13 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 					print "\tLooking for fragile sites...\n";				
 					#IF fsites defined, only output contigs that span fragile sites
 					if ($hasfsites!=0) {
-						#previous and next reference label as borders for fragile site search
+						#previous and next reference label as borders for fragile site search if no overlap, otherwise use ends of contigs as boundaries
 						my $prevLabelId = $firstRefEndPosSite - 1;
 						my $nextLabelId = $secondRefStartPosSite + 1;
+						if ($posDistance<0) {
+							$prevLabelId = $firstRefEndPosSite;
+							$nextLabelId = $secondRefStartPosSite;
+						}						
 						my $prevLabelPos = 0;
 						my $nextLabelPos = 0;
 						my $missLabelPos=0;
@@ -392,13 +452,13 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 						}
 						
 						#print "\tPrevLabel Id: $prevLabelId Pos: $prevLabelPos\tNextLabel Id: $nextLabelId Pos: $nextLabelPos\n";
-						my $globalMin=$prevLabelPos-500; 
-						my $globalMax=$nextLabelPos+500; 
+						my $globalMin=$prevLabelPos-1000; 
+						my $globalMax=$nextLabelPos+1000; 
 						
 						#actually only search 
-						if ($labelsDistance != -1) {
-							$globalMin = $firstRefEndPos-1000;
-							$globalMax = $secondRefStartPos+1000;
+						if ($labelsDistance < -1) {
+							$globalMax = $firstRefEndPos+1000;
+							$globalMin = $secondRefStartPos-1000;
 						}
 						
 						
@@ -444,6 +504,54 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 										
 								next if ($firstQryContigID eq $previous);
 								
+								#generate new alignmol stats for newContig
+								print "\tNew alignmolAnalysis entry created\n";
+								my $firstRatio=0;
+								my $secondRatio=0;
+								my $newId = $firstQryContigID+$idOffset;
+								my $newStartRatio=0;
+								my $newEndRatio=0;
+								foreach my $alignmolEntry_ref (@alignmol) {
+								my %alignmolEntry = %$alignmolEntry_ref;
+									if ($alignmolEntry{CMapId} eq $firstQryContigID || $alignmolEntry{CMapId} eq $secondQryContigID) {
+										print "\t\tCmapID: $alignmolEntry{CMapId} StartRatio: $alignmolEntry{StartRatio} EndRatio: $alignmolEntry{EndRatio}\n";
+									}
+									if ($alignmolEntry{CMapId} eq $firstQryContigID) {
+										if ($firstOrientation eq "+") {
+											$firstRatio = $alignmolEntry{EndRatio};
+											$newStartRatio = $alignmolEntry{StartRatio};
+										}
+										else {
+											$firstRatio = $alignmolEntry{StartRatio};
+											$newStartRatio = $alignmolEntry{EndRatio};
+										}
+									}
+									elsif ($alignmolEntry{CMapId} eq $secondQryContigID) {
+										if ($secondOrientation eq "+") {
+											$secondRatio = $alignmolEntry{StartRatio};
+											$newEndRatio = $alignmolEntry{EndRatio};
+										}
+										else {
+											$secondRatio = $alignmolEntry{EndRatio};
+											$newEndRatio = $alignmolEntry{StartRatio};
+										}
+									}
+								}
+								my $out = "$inputs{alignmolAnalysis}";
+								open OUT, "+>>$out" or die "ERROR: Cannot open $out for writing! $!\n";
+								flock (OUT, LOCK_EX) or die "ERROR: Cannot open $out for locking! $!\n";
+								seek (OUT, 0, 2);
+								print OUT "$newId\t$newStartRatio\t$newEndRatio\n";
+								flock(OUT, LOCK_UN) or die "ERROR: Cannot unlock $out! $!\n";
+								close OUT;
+								
+								my %alignmol_line = (
+									"CMapId"  => "$newId",
+									"StartRatio" => "$newStartRatio", 
+									"EndRatio"  => "$newEndRatio"
+								);
+								push @alignmol, \%alignmol_line;
+								
 								
 								push @firstContigList,$firstQryContigID;
 								push @secondContigList,$secondQryContigID;
@@ -455,6 +563,7 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 								push @thickEndList, $thickEnd;
 								push @itemRgbaList, $itemRgba;
 								$missedLabelsPos{$count} = $missLabelPos;
+								push @labelsDistanceList, $labelsDistance;
 								$count++;
 								
 								if ($hasSeq == 1) { push @seqList, $seq; }
@@ -463,6 +572,81 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 								last;
 							}
 						}
+					
+						if ($fsiteFound eq 0 && $hasalignmol eq 1) {
+							print "\tLooking for single molecule alignment-based fragile sites...\n";
+							my $firstRatio=0;
+							my $secondRatio=0;
+							my $newId = $firstQryContigID+$idOffset;
+							my $newStartRatio=0;
+							my $newEndRatio=0;
+							foreach my $alignmolEntry_ref (@alignmol) {
+								my %alignmolEntry = %$alignmolEntry_ref;
+								#print "\n\tCmapID: $alignmolEntry{CMapId} StartRatio: $alignmolEntry{StartRatio} EndRatio: $alignmolEntry{EndRatio}\n";
+								if ($alignmolEntry{CMapId} eq $firstQryContigID) {
+									if ($firstOrientation eq "+") {
+										$firstRatio = $alignmolEntry{EndRatio};
+										$newStartRatio = $alignmolEntry{StartRatio};
+									}
+									else {
+										$firstRatio = $alignmolEntry{StartRatio};
+										$newStartRatio = $alignmolEntry{EndRatio};
+									}
+								}
+								elsif ($alignmolEntry{CMapId} eq $secondQryContigID) {
+									if ($secondOrientation eq "+") {
+										$secondRatio = $alignmolEntry{StartRatio};
+										$newEndRatio = $alignmolEntry{EndRatio};
+									}
+									else {
+										$secondRatio = $alignmolEntry{EndRatio};
+										$newEndRatio = $alignmolEntry{StartRatio};
+									}
+								}
+							}
+							print "\tQryContigID: $firstQryContigID EndRatio: $firstRatio  QryContigID: $secondQryContigID StartRatio: $secondRatio\n";
+							
+							my $minRatio = $inputs{minRatio} + 0;
+							if ($firstRatio >= $minRatio && $secondRatio >= $minRatio && ( ($posDistance>=0 && $labelsDistance<=1) || ($posDistance<0 && abs($labelsDistance)<=$inputs{maxOverlapLabels}) ) ) {
+								print "\t\tFragile site observed at genome map ends\n";
+								push @firstContigList,$firstQryContigID;
+								push @secondContigList,$secondQryContigID;
+								
+								push @fsiteTypeList, "Observed";
+								push @scoreList, "0";
+								push @strandList, "0";
+								push @thickStartList, $prevLabelPos;
+								push @thickEndList, $nextLabelPos;
+								push @itemRgbaList, "255,255,255,255";
+							
+								if ($hasSeq == 1) { push @seqList, "NNNNNNNNNN"; }
+								push @labelsDistanceList, $labelsDistance;
+
+								$previous = $firstQryContigID;		
+								$missedLabelsPos{$count} = $missLabelPos;
+								$count++;					
+								$fsiteFound = 1;
+								
+								my $out = "$inputs{alignmolAnalysis}";
+								open OUT, "+>>$out" or die "ERROR: Cannot open $out for writing! $!\n";
+								flock (OUT, LOCK_EX) or die "ERROR: Cannot open $out for locking! $!\n";
+								seek (OUT, 0, 2);
+								print OUT "$newId\t$newStartRatio\t$newEndRatio\n";
+								flock(OUT, LOCK_UN) or die "ERROR: Cannot unlock $out! $!\n";
+								close OUT;
+								
+								my %alignmol_line = (
+									"CMapId"  => "$newId",
+									"StartRatio" => "$newStartRatio", 
+									"EndRatio"  => "$newEndRatio"
+								);
+								push @alignmol, \%alignmol_line;
+							}
+							else {
+								print "\t\tNo fragile site observed at genome map ends\n";
+							}							
+						}
+						
 						if ($fsiteFound eq 0) { print "\tNo fragile site found in Window\n"; }
 					}
 					else {
@@ -470,7 +654,53 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 						push @firstContigList,$firstQryContigID;
 						push @secondContigList,$secondQryContigID;
 					}
-				}			
+				}
+
+				##IF alignmol defined, merge maps whose ends look like fragile sites
+				#if ($hasalignmol != 0) {
+					#if ( (grep {$_ eq $firstQryContigID} @firstContigList) || (grep {$_ eq $firstQryContigID} @secondContigList) || (grep {$_ eq $secondQryContigID} @secondContigList) || (grep {$_ eq$secondQryContigID} @firstContigList)) {
+					##print "\tOne of the contigs already ID'ed to merge...\n";
+					#next; }
+					#else {
+						#print "\tLooking for single molecule alignment-based fragile sites...\n";
+						#my $firstRatio=0;
+						#my $secondRatio=0;
+						#foreach my $alignmolEntry_ref (@alignmol) {
+							#my %alignmolEntry = %$alignmolEntry_ref;
+							#if ($alignmolEntry{CMapId} eq $firstQryContigID) {
+								#if ($firstOrientation eq "+") {
+									#$firstRatio = $alignmolEntry{EndRatio};
+								#}
+								#else {
+									#$firstRatio = $alignmolEntry{StartRatio};
+								#}
+							#}
+							#elsif ($alignmolEntry{CMapId} eq $secondQryContigID) {
+								#if ($firstOrientation eq "+") {
+									#$secondRatio = $alignmolEntry{StartRatio};
+								#}
+								#else {
+									#$secondRatio = $alignmolEntry{EndRatio};
+								#}
+							#}
+						#}
+						
+						#my $minRatio=0.90;
+						#if ($firstRatio >= $minRatio && $secondRatio >= $minRatio && $labelsDistance <= 0) {
+							#push @firstContigList,$firstQryContigID;
+							#push @secondContigList,$secondQryContigID;
+							#push @fsiteTypeList, $type;
+							#push @scoreList, $score;
+							#push @strandList, $strand;
+							#push @thickStartList, $thickStart;
+							#push @thickEndList, $thickEnd;
+							#push @itemRgbaList, "255,255,255,255";
+						#}
+				
+					#}
+
+				#}
+			
 			}
 			else {
 				print "\tLabel filter: FAIL\n";
@@ -529,6 +759,8 @@ if (scalar(@secondContigList) > 0) {
 			push @ARGS, $missedLabelsPos{0};
 		}
 		else { push @ARGS,"0"; }
+		push @ARGS, $labelsDistanceList[0];
+
 		my $cwd = cwd();
 		print "Running command: ".$^X." $extractScript ". join(" ",@ARGS)."\n";
 		system($^X, "$extractScript", @ARGS);
@@ -549,7 +781,8 @@ if (scalar(@secondContigList) > 0) {
 			if (exists $missedLabelsPos{$i}) {
 				push @ARGS, $missedLabelsPos{$i};
 			}
-			else { push @ARGS,"0"; }			
+			else { push @ARGS,"0"; }	
+			push @ARGS, $labelsDistanceList[$i];		
 			print "Running command: ".$^X." $extractScript ". join(" ",@ARGS)."\n";
 			system($^X, "$extractScript", @ARGS);
 			print "QryContigID $firstContigList[$i] merged with QryContigID $secondContigList[$i] into QueryContigID ".($firstContigList[$i]+$idOffset)."\n";
@@ -565,6 +798,7 @@ if (scalar(@secondContigList) > 0) {
 	my $veto = q/-output-veto-filter '(_intervals.txt|.err|.maprate|[a-z|A-Z].map)$'/;
 	#$veto = $veto." -output-veto-filter .err";
 	#print "Veto: $veto\n";
+
 	if ($inputs{round} == 1) {
 		# Perform first alignment round
 		print "=====  Performing round $inputs{round} alignment =====\n"; 
@@ -643,11 +877,56 @@ if (scalar(@secondContigList) > 0) {
 	elsif ($inputs{round} == 4) {
 		# If fourth round, perform 4th round of merge
 		print "======   Performing round $inputs{round} alignment ======= \n"; 
-		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName3 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e} -stdout");	
+		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e} -stdout");	
 		print "\nFOURTH ROUND COMPLETE.\n\n";
+
+		# Launch fifth round
+		print "******   Launching round  5******\n"; 
+		$outName2 =~ s/.xmap//g;
+		my %args = %inputs; 
+		$args{x} = $outName2.".xmap"; 
+		$args{q} = $outName2."_q.cmap"; 
+		$args{round} = 5; 	
+
+		my @args;
+        	foreach my $opt (keys %args)  { push @args, "--$opt $args{$opt}"; }
+		my $syscall = $^X." $0 ". join(" ",@args);
+        	print "Running command: $syscall \n";
+        	system($syscall);
 	
 		exit 0; #If fourth round, exit script gracefully to return back to third round script to do more work	
-	}		
+	}
+	elsif ($inputs{round} == 5) {
+		# If fifth round, perform 5th round of merge
+		print "======   Performing round $inputs{round} alignment ======= \n"; 
+		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e} -stdout");	
+		print "\nFIFTH ROUND COMPLETE.\n\n";
+
+		# Launch sixth round
+		print "******   Launching round  6******\n"; 
+		$outName2 =~ s/.xmap//g;
+		my %args = %inputs; 
+		$args{x} = $outName2.".xmap"; 
+		$args{q} = $outName2."_q.cmap"; 
+		$args{round} = 6; 	
+
+		my @args;
+        	foreach my $opt (keys %args)  { push @args, "--$opt $args{$opt}"; }
+		my $syscall = $^X." $0 ". join(" ",@args);
+        	print "Running command: $syscall \n";
+        	system($syscall);
+	
+		exit 0; #If fifth round, exit script gracefully to return back to fourth round script to do more work	
+	}
+	elsif ($inputs{round} == 6) {
+		# If sixth round, perform 6th round of merge
+		print "======   Performing round $inputs{round} alignment ======= \n"; 
+		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName3 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T 1e-12 -BestRef 1 $veto -readparameters $inputs{e} -stdout");	
+		print "\nSIXTH ROUND COMPLETE.\n\n";
+	
+		exit 0; #If sixth round, exit script gracefully to return back to fifth round script to do more work	
+
+	}			
 } 
 else {
 	print "No merges possible. Copying input data unchanged.\n\n";

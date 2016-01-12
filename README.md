@@ -11,9 +11,9 @@ Usage: perl fragileSiteRepair.pl [OPTIONS] --fasta <ref.fa> --cmap <assembly.cma
 --output <path/to/output> : output folder
 
 === KEY OPTIONS ===
---bnx <.bnx> : input BNX used for assembly. Requires --err to perform single molecule alignments. Default: OFF
---err <.err> : molecules ERR file from assembly alignmol/merge OR autoNoise1. Requires --bnx to perform single molecule alignments. Default: OFF
---bam <.bam> : BAM file of NGS scaffolds/contigs/reads aligned to --fasta. Used to supplement scoring of stitchPositions. Default: OFF
+--bnx <.bnx> : input BNX used for assembly. Requires --err to perform single molecule alignments. Default: NONE
+--alignmolDir <path/to/assembly/output/contigs/exp_refineFinal1/alignmol/merge> : directory containing molecules aligned to assembly maps XMAPs and ERR file. Requires --bnx to perform single molecule alignment scoring. Default: NONE  
+--bam <.bam> : BAM file of NGS scaffolds/contigs/reads aligned to --fasta. Used to supplement scoring of stitchPositions. Default: NONE
 
 --break : Flag to enable breaking of maps at stitchPositions with score less than threshold value. Requires --bnx and --err. Default: OFF
 --runSV : Flag to run SV module on final cmap. Default: OFF
@@ -24,15 +24,18 @@ Usage: perl fragileSiteRepair.pl [OPTIONS] --fasta <ref.fa> --cmap <assembly.cma
 === OTHER OPTIONS ===
 --enzyme <nickase sequence> : Nickase enzyme for in-silico digestion and fragile site prediction. Default: GCTCTTC
 --ngsBuffer <basepairs> : Number of basepairs that a single NGS alignment must extend past the ends of a stitchPosition to supplement score. Default: 500
---ngsBonus <raw score value> : Score bonus for each NGS alignment supporting a fragile site repair. Default: 10
+--ngsBonus <raw score value> : Score bonus for each NGS alignment supporting a fragile site repair [NOTE: see documentation for details on raw scoring for BIoNano molecules]. Default: 10
 --breakNGSonly : Flag to break maps at stitchPositions that have only NGS alignment support and no BioNano single molecule support. Default: OFF
---threshold <scaled score> : Minimum stitchPoisitons scaled score below which to break maps. Default: 1.0
+--threshold <scaled score> : Minimum stitchPoisitons scaled score below which to break maps. Scaled score=Raw Score/10. Default: 1.0
 --maxlab <label count> : Maximum number of reference labels to allow between adjacent maps. Default: 1
 --maxfill <basepairs> : Maximum number of basepairs to allow between adjacent maps. Default: 30000
 --wobble <basepairs> : Maximum number of basepairs to allow the fragile site to vary. Default: 30000
---seq <basepairs> : Number of basepairs of reference sequence +/- fragile site to output into BED file. Default: OFF
+--seq <basepairs> : Number of basepairs of reference sequence +/- predicted fragile site to output into BED file. Default: OFF
 --optArgs <optArguments.xml> : optArguments.xml to use for alignment. Default: ~/scripts/optArguments_human.xml
---endoutlier <pvalue> : endoutlier penalty for single molecule alignments (see RefAligner -help for more info). Default: 1e-3
+--endoutlier <pvalue> : endoutlier penalty for single molecule alignments (see RefAligner -help for more info). Default: 0
+--minRatio <ratio> : minimum ratio of single molecule alignments that must end at genome maps ends to be classified as a potential fragile site. Requires --alignmolDir. Default: 0.90
+--maxOverlap <bp> : maximum number of basepairs overlap between maps to allow merge. Default: 0
+--maxOverlapLabels <int labels> : maximum number of labels overlap between maps to allow merge. Default: 5
 
 --n <CPU cores> : Maximum number of CPU cores/threads to use. Default: nproc
 --j <number jobs> : Maximum number of parallel jobs. Default: nproc/6
