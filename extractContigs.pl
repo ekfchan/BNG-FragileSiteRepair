@@ -63,6 +63,8 @@ my $labelsDistance = 0;
 if (defined $ARGV[13]) {
 	$labelsDistance = $ARGV[13];
 }
+my $firstQryConf = $ARGV[14];
+my $secondQryConf = $ARGV[15];
 
 #read input XMAP
 while (my $line = <FILE>) {
@@ -121,18 +123,29 @@ if ($missedLabelPos != 0) {
 #print "\tPrinting out stitch locations to $out\n";
 #print "\t$firstContigAlignment{'RefContigID'}\t$firstContigAlignment{'RefEndPos'}\t$secondContigAlignment{'RefStartPos'}\n";
 #CMapId	Start	End	Type	Score	Strand	ThickStart	ThickEnd	ItemRgba	Sequence
-if ((defined $ARGV[11]) && (length($ARGV[11]) > 2)) {
-	print OUT "$firstContigAlignment{'RefContigID'}\t".int(($firstContigAlignment{'RefEndPos'}-1))."\t".int(($secondContigAlignment{'RefStartPos'}+1))."\t$fsiteType\t$score\t$strand\t$thickStart\t$thickEnd\t$itemRgba\t$seq\n";
+my $start = 0; my $end=0;
+if ($padding >= 0) {
+	$start = int(($firstContigAlignment{'RefEndPos'}-1));
+	$end = int(($secondContigAlignment{'RefStartPos'}+1));
 }
 else {
-	print OUT "$firstContigAlignment{'RefContigID'}\t".int(($firstContigAlignment{'RefEndPos'}-1))."\t".int(($secondContigAlignment{'RefStartPos'}+1))."\t$fsiteType\t$score\t$strand\t$thickStart\t$thickEnd\t$itemRgba\n";
+	$end = int(($firstContigAlignment{'RefEndPos'}+1));
+	$start = int(($secondContigAlignment{'RefStartPos'}-1));
+}
+
+
+if ((defined $ARGV[11]) && (length($ARGV[11]) > 2)) {
+	print OUT "$firstContigAlignment{'RefContigID'}\t".$start."\t".$end."\t$fsiteType\t$score\t$strand\t$thickStart\t$thickEnd\t$itemRgba\t$seq\n";
+}
+else {
+	print OUT "$firstContigAlignment{'RefContigID'}\t".$start."\t".$end."\t$fsiteType\t$score\t$strand\t$thickStart\t$thickEnd\t$itemRgba\n";
 }
 #run script to merge two contigs
 # mod: eva chan, 8 july 2015, assuming path of extractContigs.pl to be same as gapFill.pl (rather than in ../)
 #my $mergeScript = Cwd::abs_path("../mergeContigs.pl");
 my $mergeScript = $scriptspath."/mergeContigs_v2.pl";
 
-my @ARGS = ($ARGV[1], $ARGV[3], $firstContigAlignment{'Orientation'}, $ARGV[4], $secondContigAlignment{'Orientation'}, $padding, $missedLabelPadding, $labelsDistance);
+my @ARGS = ($ARGV[1], $ARGV[3], $firstContigAlignment{'Orientation'}, $ARGV[4], $secondContigAlignment{'Orientation'}, $padding, $missedLabelPadding, $labelsDistance, $firstQryConf, $secondQryConf);
 print "Running command: ".$^X." $mergeScript ". join(" ",@ARGS)."\n";
 system($^X, "$mergeScript", @ARGS);
 

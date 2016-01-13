@@ -95,6 +95,8 @@ my @itemRgbaList = ();
 my @seqList = ();
 my %missedLabelsPos;
 my @labelsDistanceList = ();
+my @firstQryConfList = ();
+my @secondQryConfList = ();
 
 my $idOffset = 100000;
 
@@ -357,6 +359,7 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 	my $firstOrientation = $xmap[$i]->{'Orientation'};
 	my $firstQryStartPos = $xmap[$i]->{'QryStartPos'};
 	my $firstQryEndPos = $xmap[$i]->{'QryEndPos'};
+	my $firstQryConf = $xmap[$i]->{'Confidence'};
 	if (($i+1)<scalar(@xmap)) {	
 		my $id2 = $xmap[$i+1]->{'XmapEntryID'};
 		my $secondRefStartPos = $xmap[$i+1]->{'RefStartPos'};
@@ -365,6 +368,7 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 		my $secondOrientation = $xmap[$i+1]->{'Orientation'};
 		my $secondQryStartPos = $xmap[$i+1]->{'QryStartPos'};
 		my $secondQryEndPos = $xmap[$i+1]->{'QryEndPos'};
+		my $secondQryConf = $xmap[$i+1]->{'Confidence'};
 		my $posDistance = $secondRefStartPos - $firstRefEndPos;
 		print "\nConsidering merge between XmapEntryID: $id1 QryContigID: $firstQryContigID and XmapEntryID: $id2 QryContigID: $secondQryContigID Distance: $posDistance\n";
 
@@ -564,6 +568,8 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 								push @itemRgbaList, $itemRgba;
 								$missedLabelsPos{$count} = $missLabelPos;
 								push @labelsDistanceList, $labelsDistance;
+								push @firstQryConfList, $firstQryConf;
+								push @secondQryConfList, $secondQryConf; 
 								$count++;
 								
 								if ($hasSeq == 1) { push @seqList, $seq; }
@@ -618,6 +624,8 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 								push @thickStartList, $prevLabelPos;
 								push @thickEndList, $nextLabelPos;
 								push @itemRgbaList, "255,255,255,255";
+								push @firstQryConfList, $firstQryConf;
+								push @secondQryConfList, $secondQryConf;
 							
 								if ($hasSeq == 1) { push @seqList, "NNNNNNNNNN"; }
 								push @labelsDistanceList, $labelsDistance;
@@ -744,7 +752,7 @@ for (my $i=0; $i<(scalar(@secondContigList)); $i++) {
 #my $nomerge = 0; 
 if (scalar(@secondContigList) > 0) {
 	if (scalar(@firstContigList) == scalar(@secondContigList)) {
-		print "Gap filling between ".scalar(@secondContigList)." maps\n\n";
+		print "Merging between ".scalar(@secondContigList)." maps\n\n";
 		
 		my $extractScript = $scriptspath."/extractContigs.pl";
 		
@@ -760,6 +768,8 @@ if (scalar(@secondContigList) > 0) {
 		}
 		else { push @ARGS,"0"; }
 		push @ARGS, $labelsDistanceList[0];
+		push @ARGS, $firstQryConfList[0];
+		push @ARGS, $secondQryConfList[0];
 
 		my $cwd = cwd();
 		print "Running command: ".$^X." $extractScript ". join(" ",@ARGS)."\n";
@@ -782,7 +792,9 @@ if (scalar(@secondContigList) > 0) {
 				push @ARGS, $missedLabelsPos{$i};
 			}
 			else { push @ARGS,"0"; }	
-			push @ARGS, $labelsDistanceList[$i];		
+			push @ARGS, $labelsDistanceList[$i];	
+			push @ARGS, $firstQryConfList[$i];
+			push @ARGS, $secondQryConfList[$i];	
 			print "Running command: ".$^X." $extractScript ". join(" ",@ARGS)."\n";
 			system($^X, "$extractScript", @ARGS);
 			print "QryContigID $firstContigList[$i] merged with QryContigID $secondContigList[$i] into QueryContigID ".($firstContigList[$i]+$idOffset)."\n";
