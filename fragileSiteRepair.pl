@@ -49,7 +49,7 @@ if ($inputs{h} || $inputs{help}) {
 	exit 0;
 }
 
-my $log_file = abs_path(dirname($0)."/fragileSiteRepair_log.txt");
+my $log_file = abs_path(dirname($0)."/".basename($inputs{output})."_fragileSiteRepair_log.txt");
 for (*STDOUT, *STDERR)	{
 	# captures the stdout and stderr 
 	$_->autoflush;	$_->push_layer(tee=>$log_file)

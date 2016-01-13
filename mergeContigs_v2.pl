@@ -134,6 +134,7 @@ while (my $line = <FILE>) {
 	my $secondSitesOffset = 0;
 	my $secondPosOffset = 0;
 	my $secondContigEndOrig = $secondContigEnd;
+	my $firstSitesOrig = $firstSites;
 	if ($labelsDistance < 0) {
 		$mergedSites = $firstContigSites + $secondContigSites + $labelsDistance;
 		if ($firstQryConf >= $secondQryConf) {
@@ -356,13 +357,13 @@ if (($ARGV[2] eq '-' && $ARGV[4] eq '+')) {
 	#output second contig
 	#my $positionOffset = $firstContigEnd + $missedLabelPadding + 1;
 	
-	for (my $i=0; $i < ($secondSites+1); $i++ ) {
+	for (my $i=$secondIdxStart; $i < ($secondSites+1+$secondSitesOffset); $i++ ) {
 		my $hash = $secondContig[$i];
 		my %new_hash_ref = (
 				"CMapId"  => "$mergedId", # 2020
 				"ContigLength" => "$mergedLength", # 718132.6
 				"NumSites"  => "$mergedSites", # 74
-				"SiteID"  => $hash->{'SiteID'} + $sitesOffset, # 1
+				"SiteID"  => $hash->{'SiteID'} + $sitesOffset - $secondSitesOffset, # 1
 				"LabelChannel"  => "$hash->{'LabelChannel'}", # 1
 				"Position"  => $hash->{'Position'} + $positionOffset, # 20.0
 				"StdDev" => "$hash->{'StdDev'}", # 81.9
@@ -397,9 +398,9 @@ elsif (($ARGV[2] eq "-" && $ARGV[4] eq "-")) {
 				"CMapId"  => "$mergedId", # 2020
 				"ContigLength" => "$mergedLength", # 718132.6
 				"NumSites"  => "$mergedSites", # 74
-				"SiteID"  => ($firstSites - $hash->{'SiteID'}) + 1, # 1
+				"SiteID"  => ($firstSitesOrig - $hash->{'SiteID'}) + 1, # 1
 				"LabelChannel"  => "$hash->{'LabelChannel'}", # 1
-				"Position"  => ($firstContigEnd - $hash->{'Position'}), # 20.0
+				"Position"  => ($firstContigEndOrig - $hash->{'Position'}), # 20.0
 				"StdDev" => "$hash->{'StdDev'}", # 81.9
 				"Coverage" => "$hash->{'Coverage'}", # 14.0
 				"Occurrence" => "$hash->{'Occurrence'}", # 14.0
@@ -421,9 +422,16 @@ elsif (($ARGV[2] eq "-" && $ARGV[4] eq "-")) {
 	
 	#output REVERSED second contig
 	#my $positionOffset = $firstContigEnd + $missedLabelPadding;
+
+	if ($labelsDistance < 0) {
+		if ($firstQryConf < $secondQryConf) {
+			$positionOffset = $firstContigEnd;
+		}
+	}
+
 		
 	@secondContig = reverse(@secondContig);	
-	for (my $i=1; $i < ($secondSites+1); $i++ ) {
+	for (my $i=(1+$secondIdxStart); $i < ($secondSites+1+$secondIdxStart); $i++ ) {
 		my $hash = $secondContig[$i];
 		my %new_hash_ref = (
 				"CMapId"  => "$mergedId", # 2020
