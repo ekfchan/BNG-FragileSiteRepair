@@ -8,7 +8,7 @@
 use strict;
 use warnings;
 use Getopt::Long; 
-use Cwd qw(abs_path);
+use Cwd qw(abs_path cwd);
 use File::Basename;
 use File::Path qw(rmtree mkpath);
 use File::Copy;
@@ -49,7 +49,7 @@ if ($inputs{h} || $inputs{help}) {
 	exit 0;
 }
 
-my $log_file = abs_path(dirname($0)."/".basename($inputs{output})."_fragileSiteRepair_log.txt");
+my $log_file = cwd()."/".basename($inputs{output})."_fragileSiteRepair_log.txt";
 for (*STDOUT, *STDERR)	{
 	# captures the stdout and stderr 
 	$_->autoflush;	$_->push_layer(tee=>$log_file)
