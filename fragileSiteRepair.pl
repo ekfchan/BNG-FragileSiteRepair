@@ -3,7 +3,7 @@
 # A wrapper script to run fragile site repair on a BioNano assembly as it aligns to a reference using an input FASTA and assembly CMAP 
 # Assembly maps are stitched together based on alignments if the maps start and stop overlap a fragile site
 
-# Usage: perl fragileSiteRepair.pl --fasta <reference.fasta> --cmap <assembly.cmap> --output <output folder> [--bnx <input.bnx to run alignmol>] [--alignmolDir <path/to/assembly/output/contigs/exp_refineFinal1/alignmol/merge>] [--enzyme <sequence of enzyme to use =GCTCTTC>] [--bam <.bam alignment of NGS reads/contigs to input ref FASTA>] [--ngsBuffer <bp +/- stitchPosition to require NGS alignment =500>] [--threshold <minimum score threshold below which to cut stitched maps =1>] [--maxlab <max_label_gap_tolerence =1>] [--maxfill <max basepairs to fill between contigs =30000>] [--wobble <fragile site wobble in bp =30000>] [--seq <sequence bp +/- fragile site to print in final BED =off>] [--force <overwrite output folder =off>] [--n <number of CPU cores =nproc>] [--j <number of parallel jobs =nproc/6>] [--optArgs <optArguments.xml =optArguments_human.xml>] [--runSV <enable run SV detection =off>]  [--gaps <N-base gaps BED file>] [--break <break maps at stitch locations with score below threshold =off>] [--endoutlier <Pvalue penalty for endoutlier =0>] [--minRatio <ratio> : minimum ratio of single molecule alignments that must end at genome maps ends to be classified as a potential fragile site. Requires --alignmolDir. Default: 0.90] [--aggressive <calculate TypeIII and TypeIV fragile sites =off>] [--ngsBonus <raw score bonus for supporting NGS alignments =10>] [--breakNGSonly <break maps if stitch has no BioNano support =off>]
+# Usage: perl fragileSiteRepair.pl --help
 
 use strict;
 use warnings;
@@ -49,18 +49,23 @@ if ($inputs{h} || $inputs{help}) {
 	exit 0;
 }
 
-my $log_file = cwd()."/".basename($inputs{output})."_fragileSiteRepair_log.txt";
-for (*STDOUT, *STDERR)	{
-	# captures the stdout and stderr 
+my $log_file = cwd()."/".basename($inputs{output})."_fragileSiteRepair_stdout_log.txt";
+my $log_err_file = cwd()."/".basename($inputs{output})."_fragileSiteRepair_stderr_log.txt";
+#for (*STDOUT, *STDERR)	{
+for (*STDOUT)	{
+	# captures the stdout
 	$_->autoflush;	$_->push_layer(tee=>$log_file)
 } 
+for (*STDERR)	{
+	# captures the stderr 
+	$_->autoflush;	$_->push_layer(tee=>$log_err_file)
+}
 
 print "\n";
 print qx/ps -o args $$/;
 print "\n";
 
 if ( !exists $inputs{fasta} | !exists $inputs{cmap} | !exists $inputs{output} ) {
-	#print "Usage: perl fragileSiteRepair.pl --fasta <reference.fasta> --cmap <assembly.cmap> --output <output folder> [--bnx <input.bnx to run alignmol>] [--alignmolDir <path/to/assembly/output/contigs/exp_refineFinal1/alignmol/merge>] [--enzyme <sequence of enzyme to use =GCTCTTC>] [--bam <.bam alignment of NGS reads/contigs to input ref FASTA>] [--ngsBuffer <bp +/- stitchPosition to require NGS alignment =500>] [--threshold <minimum score threshold below which to cut stitched maps =1>] [--maxlab <max_label_gap_tolerence =1>] [--maxfill <max basepairs to fill between contigs =30000>] [--wobble <fragile site wobble in bp =30000>] [--seq <sequence bp +/- fragile site to print in final BED =off>] [--force <overwrite output folder =off>] [--n <number of CPU cores =nproc>] [--j <number of parallel jobs =nproc/6>] [--optArgs <optArguments.xml =optArguments_human.xml>] [--runSV <enable run SV detection =off>] [--gaps <N-base gaps BED file>] [--break <break maps at stitch locations with score below threshold =off>] [--endoutlier <Pvalue penalty for endoutlier =0>] [--minRatio <ratio> : minimum ratio of single molecule alignments that must end at genome maps ends to be classified as a potential fragile site. Requires --alignmolDir. Default: 0.90] [--aggressive <calculate TypeIII and TypeIV fragile sites =off>] [--ngsBonus <raw score bonus for supporting NGS alignments =10>] [--breakNGSonly <break maps if stitch has no BioNano support =off>]\n\n"; 
 	Usage();
 	print "\n";
 	exit 0; 
@@ -120,7 +125,7 @@ else {
 	
 	if( !exists $inputs{minRatio} ) { $inputs{minRatio} = 0.70; }
 
-	if( !exists $inputs{maxOverlap} ||  $inputs{maxOverlap}<0) { $inputs{maxOverlap} = 0; }
+	if( !exists $inputs{maxOverlap} ||  $inputs{maxOverlap}<0) { $inputs{maxOverlap} = 20000; }
 
 	if( !exists $inputs{maxOverlapLabels} ||  $inputs{maxOverlapLabels}<0) { $inputs{maxOverlapLabels} = 5; }
 	
@@ -1231,8 +1236,8 @@ sub Usage {
 	print "\t--seq <basepairs> : Number of basepairs of reference sequence +/- fragile site to output into BED file. Default: OFF\n";
 	print "\t--optArgs <optArguments.xml> : optArguments.xml to use for alignment. Default: ~/scripts/optArguments_human.xml\n";
 	print "\t--endoutlier <pvalue> : endoutlier penalty for single molecule alignments. Default: 1e-3\n";
-	print "\t--minRatio <ratio> : minimum ratio of single molecule alignments that must end at genome maps ends to be classified as a potential fragile site. Requires --alignmolDir. Default: 0.90\n";
-	print "\t--maxOverlap <bp> : maximum number of basepairs overlap between maps to allow merge. Default: 0\n";
+	print "\t--minRatio <ratio> : minimum ratio of single molecule alignments that must end at genome maps ends to be classified as a potential fragile site. Requires --alignmolDir. Default: 0.70\n";
+	print "\t--maxOverlap <bp> : maximum number of basepairs overlap between maps to allow merge. Default: 20000\n";
 	print "\t--maxOverlapLabels <int labels> : maximum number of labels overlap between maps to allow merge. Default: 5\n";
 	print "\n";
 	print "\t--n <CPU cores> : Maximum number of CPU cores/threads to use. Default: nproc\n";

@@ -333,9 +333,9 @@ if (($ARGV[2] eq '-' && $ARGV[4] eq '+')) {
 				"CMapId"  => "$mergedId", # 2020
 				"ContigLength" => "$mergedLength", # 718132.6
 				"NumSites"  => "$mergedSites", # 74
-				"SiteID"  => ($firstSites - $hash->{'SiteID'}) + 1, # 1
+				"SiteID"  => ($firstSitesOrig - $hash->{'SiteID'}) + 1, # 1
 				"LabelChannel"  => "$hash->{'LabelChannel'}", # 1
-				"Position"  => ($firstContigEnd - $hash->{'Position'}), # 20.0
+				"Position"  => ($firstContigEndOrig - $hash->{'Position'}), # 20.0
 				"StdDev" => "$hash->{'StdDev'}", # 81.9
 				"Coverage" => "$hash->{'Coverage'}", # 14.0
 				"Occurrence" => "$hash->{'Occurrence'}", # 14.0
