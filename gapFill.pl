@@ -546,6 +546,7 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 								flock (OUT, LOCK_EX) or die "ERROR: Cannot open $out for locking! $!\n";
 								seek (OUT, 0, 2);
 								print OUT "$newId\t$newStartRatio\t$newEndRatio\n";
+								print "\tNewCmapID: $newId NewStartRatio: $newStartRatio NewEndRatio: $newEndRatio\n";
 								flock(OUT, LOCK_UN) or die "ERROR: Cannot unlock $out! $!\n";
 								close OUT;
 								

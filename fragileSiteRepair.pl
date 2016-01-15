@@ -13,6 +13,7 @@ use File::Basename;
 use File::Path qw(rmtree mkpath);
 use File::Copy;
 use File::Find;
+use File::Tee qw(tee);
 use IPC::System::Simple qw(system capture);
 #use Parallel::Iterator qw(iterate_as_array);
 #use Parallel::Loops;
@@ -23,6 +24,7 @@ use DateTime::Format::Human::Duration;
 #use Data::Dumper;
 use PerlIO::Util;
 use Fcntl qw(:flock SEEK_END);
+use Statistics::Lite qw(:all);
 
 my $dtStart = DateTime->now;
 my $stime = DateTime->now;
@@ -52,14 +54,16 @@ if ($inputs{h} || $inputs{help}) {
 my $log_file = cwd()."/".basename($inputs{output})."_fragileSiteRepair_stdout_log.txt";
 my $log_err_file = cwd()."/".basename($inputs{output})."_fragileSiteRepair_stderr_log.txt";
 #for (*STDOUT, *STDERR)	{
-for (*STDOUT)	{
-	# captures the stdout
-	$_->autoflush;	$_->push_layer(tee=>$log_file)
-} 
-for (*STDERR)	{
-	# captures the stderr 
-	$_->autoflush;	$_->push_layer(tee=>$log_err_file)
-}
+#for (*STDOUT)	{
+#	# captures the stdout
+#	$_->autoflush;	$_->push_layer(tee=>$log_file)
+#} 
+#for (*STDERR)	{
+#	# captures the stderr 
+#	$_->autoflush;	$_->push_layer(tee=>$log_err_file)
+#}
+tee(STDOUT, '>', "$log_file");
+tee(STDERR, '>', "$log_err_file");
 
 print "\n";
 print qx/ps -o args $$/;
@@ -121,7 +125,7 @@ else {
 
 	if( exists $inputs{threshold} && looks_like_number($inputs{threshold}) ) { $threshold = $inputs{threshold}; } 
 	
-	if( !exists $inputs{endoutlier} ) { $inputs{endoutlier} = "0"; }
+	if( !exists $inputs{endoutlier} ) { $inputs{endoutlier} = "1e-5"; }
 	
 	if( !exists $inputs{minRatio} ) { $inputs{minRatio} = 0.70; }
 
@@ -140,7 +144,7 @@ my $splitfastaprefix = basename(abs_path($inputs{fasta}), @suffixlist);
 
 # Make sure dependency scripts exist
 my $scriptspath = abs_path(dirname($0));
-if (!-e "$scriptspath/calcFragileSites.pl" | !-e "$scriptspath/split_xmap_standalone.pl" | !-e "$scriptspath/gapFill.pl" | !-e "$scriptspath/extractFASTA_fromBED.pl" | !-e "$scriptspath/runCharacterizeFinal.py" | !-e "$scriptspath/callSV.pl" | !-e "$scriptspath/scoreStitchPositionsBED_v5.pl" | !-e "$scriptspath/cutCmapByBedScore.pl" | !-e "$scriptspath/fa2cmap_multi_color.pl" | !-e "$scriptspath/alignmolAnalysis.pl") {
+if (!-e "$scriptspath/calcFragileSites_v2.pl" | !-e "$scriptspath/split_xmap_standalone.pl" | !-e "$scriptspath/gapFill.pl" | !-e "$scriptspath/extractFASTA_fromBED.pl" | !-e "$scriptspath/runCharacterizeFinal.py" | !-e "$scriptspath/callSV.pl" | !-e "$scriptspath/scoreStitchPositionsBED_v5.pl" | !-e "$scriptspath/cutCmapByBedScore.pl" | !-e "$scriptspath/fa2cmap_multi_color.pl" | !-e "$scriptspath/alignmolAnalysis.pl") {
 	die "ERROR: Dependency scripts not found at $scriptspath\n"; 
 }
 if( !-e $ENV{"HOME"}."/tools/RefAligner" | !-e $ENV{"HOME"}."/scripts/HybridScaffold/scripts/calc_cmap_stats.pl" | !-e $ENV{"HOME"}."/scripts/optArguments_human.xml" | !-e $ENV{"HOME"}."/scripts/runSV.py") {
@@ -254,7 +258,7 @@ my $bed;
 
 $stime = DateTime->now;
 # Usage: perl calcFragileSites.pl --fasta <input FASTA> [--output <output.bed>] [--buffer <sequence buffer in bp>] [--random] [--enzyme <sequence to use to calculate fragile sites> [--agressive <calculate TypeIII and TypeIV fragile sites>]]
-$cmd = "perl $scriptspath/calcFragileSites.pl --fasta $inputs{fasta} --output $inputs{output} --enzyme $inputs{enzyme}";
+$cmd = "perl $scriptspath/calcFragileSites_v2.pl --fasta $inputs{fasta} --output $inputs{output} --enzyme $inputs{enzyme}";
 if ($inputs{aggressive}) {
 	$cmd = $cmd." --aggressive";
 }
@@ -544,10 +548,11 @@ foreach my $bedFile (@beds) {
 	}
 	close BEDFILE; 
 }
-my ($bedOut_ref, $typeCount_ref, $typeConf_ref) = sortBEDandCount(\@bedOut);
+my ($bedOut_ref, $typeCount_ref, $typeConf_ref, $typeConfStdDev_ref) = sortBEDandCount(\@bedOut);
 @bedOut = @$bedOut_ref;
 my %typeCount = %$typeCount_ref;
 my %typeConf = %$typeConf_ref;
+my %typeConfStdDev = %$typeConfStdDev_ref;
 my $stitchCount = scalar(@bedOut);
 print BEDOUT join("\n",@bedOut);
 close BEDOUT; 
@@ -871,13 +876,14 @@ while (<ORIGBEDFILE>) {
 		push @origBed, $_;
 }
 close ORIGBEDFILE; 
-my ($origBedOut_ref, $origTypeCount_ref, $origTypeConf_ref) = sortBEDandCount(\@origBed);
+my ($origBedOut_ref, $origTypeCount_ref, $origTypeConf_ref, $origtypeConfStdDev_ref) = sortBEDandCount(\@origBed);
 my %origTypeCount = %$origTypeCount_ref;
 my %origTypeConf = %$origTypeConf_ref;
+my %origTypeConfStdDev = %$origtypeConfStdDev_ref;
 my $origCount = scalar(@origBed);
 print "Total potential predicted fragile sites: $origCount\n";
 foreach my $type (sort keys %origTypeCount) {
-	print "\t$type: $origTypeCount{$type} AvgConf: $origTypeConf{$type}\n";
+	print "\t$type: $origTypeCount{$type} AvgConf: $origTypeConf{$type} StdDevConf: $origTypeConfStdDev{$type}\n";
 }
 
 #get stats of scored BED
@@ -892,20 +898,21 @@ if (-e $newBED) {
 		push @newBed, $_;
 	}
 	close NEWBEDFILE; 
-	my ($newBedOut_ref, $newTypeCount_ref, $newTypeConf_ref) = sortBEDandCount(\@newBed);
+	my ($newBedOut_ref, $newTypeCount_ref, $newTypeConf_ref, $newTypeConfStdDev_ref) = sortBEDandCount(\@newBed);
 	my %newTypeCount = %$newTypeCount_ref;
 	my %newTypeConf = %$newTypeConf_ref;
+	my %newTypeConfStdDev = %$newTypeConfStdDev_ref;
 	my $newCount = scalar(@newBed);
 	
 	print "Total fragile sites repaired (stitched) and scored: $newCount\n";
 	foreach my $type (sort keys %newTypeCount) {
-		print "\t$type: $newTypeCount{$type} AvgConf: $newTypeConf{$type}\n";
+		print "\t$type: $newTypeCount{$type} AvgConf: $newTypeConf{$type} StdDevConf: $newTypeConfStdDev{$type}\n";
 	}
 }
 else {
 	print "Total fragile sites repaired (stitched): $stitchCount\n";
 	foreach my $type (sort keys %typeCount) {
-		print "\t$type: $typeCount{$type} AvgConf: $typeConf{$type}\n";
+		print "\t$type: $typeCount{$type} AvgConf: $typeConf{$type} StdDevConf: $typeConfStdDev{$type}\n";
 	}
 }
 print "\n";
@@ -1019,16 +1026,19 @@ sub sortBEDandCount {
 	my @AoA;
 	my %typeCount;
 	my %typeConf;
+	my %confHashArray;
+	my %typeAvgConf;
+	my %typeStdDevConf;
 	foreach my $line (@bedIn) {
 		chomp($line);
 		#print "$line\n";
 		my @s = split("\t",$line);
 		#CMapId	Start	End	Type	Score	Strand	ThickStart	ThickEnd	ItemRgba	Sequence
 		if (scalar(@s) == 10) {
-			push (@AoA, [$s[0],$s[1],$s[2],$s[3], $s[4],$s[5],$s[6],$s[7],$s[8],$s[9]]);
+			push (@AoA, [$s[0],int($s[1]),int($s[2]),$s[3], $s[4],$s[5],int($s[6]),int($s[7]),$s[8],$s[9]]);
 		}
 		else {
-			push (@AoA, [$s[0],$s[1],$s[2],$s[3], $s[4],$s[5],$s[6],$s[7],$s[8]]);
+			push (@AoA, [$s[0],int($s[1]),int($s[2]),$s[3],$s[4],$s[5],int($s[6]),int($s[7]),$s[8]]);
 		}
 		if ($s[3] =~ m/Type/i) {
 			$typeCount{$s[3]}++;
@@ -1038,14 +1048,23 @@ sub sortBEDandCount {
 		}
 		if (!exists $typeConf{$s[3]}) {
 			$typeConf{$s[3]} = $s[4];
+			push( @{$confHashArray{$s[3]} }, $s[4]);  
+			
 		}
 		else {
 			$typeConf{$s[3]} += $s[4];
+			push( @{$confHashArray{$s[3]} }, $s[4]);  
 		}
 	}
 	foreach my $type (sort keys %typeConf) {
-		$typeConf{$type} = $typeConf{$type} / $typeCount{$type};
-		$typeConf{$type} = (sprintf "%.2f", $typeConf{$type});
+		$typeAvgConf{$type} = $typeConf{$type} / $typeCount{$type};
+		$typeAvgConf{$type} = (sprintf "%.2f", $typeAvgConf{$type});
+		
+		my $confArray_ref = $confHashArray{$type};
+		my @confArray = @{$confArray_ref};
+		$typeStdDevConf{$type} = stddev(@confArray);
+		$typeStdDevConf{$type} = (sprintf "%.2f", $typeStdDevConf{$type});
+
 	}
 	
 	# my @sortedAoA = map  { $_->[0] }
@@ -1074,7 +1093,7 @@ sub sortBEDandCount {
 			# push @bedOut, $lineOut;
 		# }
 	# }
-	return (\@bedOut,\%typeCount,\%typeConf);
+	return (\@bedOut,\%typeCount,\%typeAvgConf, \%typeStdDevConf);
 }
 
 sub findBED {
@@ -1235,7 +1254,7 @@ sub Usage {
 	print "\t--wobble <basepairs> : Maximum number of basepairs to allow the fragile site to vary. Default: 30000\n";
 	print "\t--seq <basepairs> : Number of basepairs of reference sequence +/- fragile site to output into BED file. Default: OFF\n";
 	print "\t--optArgs <optArguments.xml> : optArguments.xml to use for alignment. Default: ~/scripts/optArguments_human.xml\n";
-	print "\t--endoutlier <pvalue> : endoutlier penalty for single molecule alignments. Default: 1e-3\n";
+	print "\t--endoutlier <pvalue> : endoutlier penalty for single molecule alignments. Default: 1e-5\n";
 	print "\t--minRatio <ratio> : minimum ratio of single molecule alignments that must end at genome maps ends to be classified as a potential fragile site. Requires --alignmolDir. Default: 0.70\n";
 	print "\t--maxOverlap <bp> : maximum number of basepairs overlap between maps to allow merge. Default: 20000\n";
 	print "\t--maxOverlapLabels <int labels> : maximum number of labels overlap between maps to allow merge. Default: 5\n";

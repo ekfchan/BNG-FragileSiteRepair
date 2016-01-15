@@ -308,8 +308,10 @@ for my $id (sort keys %breakPoints) {
 	$breakPoints{$id} =~ s/^\s+|\s+$//g;
 	my $out = "$id $breakPoints{$id}";
 	#print "\t$out\n";
-	$breakLine = $breakLine. " ".$out;
-	$mapCount++;
+	if ($id != 0) {
+		$breakLine = $breakLine. " ".$out;
+		$mapCount++;
+	}
 }
 $breakLine =~ s/^\s+|\s+$//g;
 print "\n";

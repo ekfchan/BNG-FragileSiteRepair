@@ -150,6 +150,7 @@ while(my $line = <$FASTA>){
 		$fastaHeader = substr($line, 1);
 		
 		if($count != 0){
+			$seq = uc($seq);
 			$A = ($seq =~ tr/A/A/);
 			$C = ($seq =~ tr/C/C/);
 			$G = ($seq =~ tr/G/G/);
@@ -217,6 +218,7 @@ while(my $line = <$FASTA>){
 		$seq .= uc($line);
 	}
 }
+$seq = uc($seq);
 $A = ($seq =~ tr/A/A/);
 $C = ($seq =~ tr/C/C/);
 $G = ($seq =~ tr/G/G/);
@@ -417,6 +419,7 @@ EOF
 sub Find_enzymes{
 	my ($seq, $enzyme, $color) = @_;
 	my @result;
+	$seq = uc($seq);
 	
 	# Find the enzymes in the forward strand, staring from the first nucleotide!!!
 	my $current_loc = index($seq, $enzyme, 0);
@@ -438,14 +441,14 @@ sub Find_enzymes{
 			$color{$current_loc+1}[ $color{$current_loc+1}[0] ] = $color;
 		}
 		
-		$current_loc = index($seq, $enzyme, $current_loc + 1);
+		$current_loc = index( $seq, $enzyme, $current_loc + 1);
 	}
 
 	my $enzyme_rc = reverse($enzyme);
 	$enzyme_rc =~ tr/ACGTUN/TGCAAN/;
 	
 	# Find the rc(enzymes) in the forward strand, staring from the first nucleotide!!!
-	$current_loc = index($seq, $enzyme_rc, 0);
+	$current_loc = index( $seq, $enzyme_rc, 0);
 	while ($current_loc != -1){
 		
 		# Add the current location into @result IFF
@@ -464,7 +467,7 @@ sub Find_enzymes{
 			$color{$current_loc+1}[ $color{$current_loc+1}[0] ] = $color;
 		}
 		
-		$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
+		$current_loc = index( $seq, $enzyme_rc, $current_loc + 1);
 	}
 	
 	# Remove duplicated values!

@@ -13,6 +13,7 @@ use Bio::SeqIO;
 #use List::MoreUtils qw(uniq);
 use Data::Dumper;
 use Getopt::Long qw(:config bundling); 
+#use Number::Bytes::Human qw(format_bytes);
 
 # usage statement
 my %inputs = (); 
@@ -281,28 +282,39 @@ print "\n";
 sub find_nick_sites{
 	
 	my ($seq, $enzymes_ref) = @_;
+	$seq = uc($seq);
 	my $seq_comp = complement($seq);
 	my @enzymes = @{$enzymes_ref};
 	my %result;
-	my $slength = length($seq);
-	
+	my $slength = length($seq);	
 	
 	foreach my $enzyme (@enzymes) {
+		$enzyme = uc($enzyme);
 		my $elength = length($enzyme);
 		my %classCount;
 		
 		# Find the first enzyme in the forward strand, starting from the first nucleotide!!!
-		my $current_loc = index($seq, $enzyme, 0);
+		my $runningCount=0;
+		my $current_loc = index( $seq, $enzyme, 0);
 		while ($current_loc != -1){
 			if($current_loc + $elength < $slength){
 				if (!exists $result{$current_loc}) {
 					$result{$current_loc} = 1;	#records position at base "G" GCTCTTCN
+					$runningCount++;
 				}
 				else {
 					$result{$current_loc} = 1;
+					#print "\t\tNickPos: $current_loc\n";
+					$runningCount++;
 				}
+
+				#my $loc = format_bytes($current_loc, bs => 1000);
+				#print "\t\tNickPos: $loc\n";
+				#if ($runningCount % 10 == 0) {
+				#	print "\t\tRunning nick count: $runningCount NickPos: $current_loc\n";
+				#}
 			}
-		$current_loc = index($seq, $enzyme, $current_loc + 1);
+		$current_loc = index( $seq, $enzyme, $current_loc + 1);
 		}	
 		
 		## find the reverse(enzyme)) in the forward strand 5' -> 3' 
@@ -321,18 +333,21 @@ sub find_nick_sites{
 		#}
 		
 		# Find the rc(first enzyme) in the forward strand, staring from the first nucleotide!!!
-		$enzyme_rc =~ tr/ACGTUN/TGCAAN/;
-		$current_loc = index($seq, $enzyme_rc, 0);
+		#$enzyme_rc =~ tr/ACGTUN/TGCAAN/;
+		$enzyme_rc = complement($enzyme_rc);
+		$current_loc = index( $seq, $enzyme_rc, 0);
 		while ($current_loc != -1){
 			if($current_loc + $elength < $slength){
 				if (!exists $result{$current_loc + $elength}) {
 					$result{$current_loc + $elength} = -1;	#records position at base "C" NGAAGAGC
+					#print "\t\tRevCompNickPos: $current_loc\n";
 				}
 				else {
 					$result{$current_loc + $elength} = -1;
+					#print "\t\tRevCompNickPos: $current_loc\n";
 				}
 			}
-			$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
+			$current_loc = index( $seq, $enzyme_rc, $current_loc + 1);
 		}
 		
 		## Find the complement(enzyme) in the forward strand 5' -> 3', starting from the first nucleotide!!!		
@@ -363,18 +378,19 @@ sub find_nick_sites{
 sub find_nick_sites_aggressive{
 	
 	my ($seq, $enzymes_ref) = @_;
+	$seq = uc($seq);
 	my $seq_comp = complement($seq);
 	my @enzymes = @{$enzymes_ref};
 	my %result;
-	my $slength = length($seq);
-	
+	my $slength = length($seq);	
 	
 	foreach my $enzyme (@enzymes) {
+		$enzyme = uc($enzyme);
 		my $elength = length($enzyme);
 		my %classCount;
 		
 		# Find the first enzyme in the forward strand, starting from the first nucleotide!!!
-		my $current_loc = index($seq, $enzyme, 0);
+		my $current_loc = index( $seq, $enzyme, 0);
 		while ($current_loc != -1){
 			if($current_loc + $elength < $slength){
 				if (!exists $result{$current_loc}) {
@@ -384,12 +400,12 @@ sub find_nick_sites_aggressive{
 					$result{$current_loc} = 3;
 				}
 			}
-		$current_loc = index($seq, $enzyme, $current_loc + 1);
+		$current_loc = index( $seq, $enzyme, $current_loc + 1);
 		}	
 		
 		## find the reverse(enzyme)) in the forward strand 5' -> 3' 
 		my $enzyme_rc = reverse($enzyme);
-		$current_loc = index($seq, $enzyme_rc, 0);
+		$current_loc = index( $seq, $enzyme_rc, 0);
 		while ($current_loc != -1){
 			if($current_loc + $elength < $slength){
 				if (!exists $result{$current_loc + $elength}) {
@@ -399,12 +415,13 @@ sub find_nick_sites_aggressive{
 					$result{$current_loc + $elength} = 3;
 				}
 			}
-			$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
+			$current_loc = index( $seq, $enzyme_rc, $current_loc + 1);
 		}
 		
 		# Find the rc(first enzyme) in the forward strand, staring from the first nucleotide!!!
-		$enzyme_rc =~ tr/ACGTUN/TGCAAN/;
-		$current_loc = index($seq, $enzyme_rc, 0);
+		#$enzyme_rc =~ tr/ACGTUN/TGCAAN/;
+		$enzyme_rc = complement($enzyme_rc);
+		$current_loc = index( $seq, $enzyme_rc, 0);
 		while ($current_loc != -1){
 			if($current_loc + $elength < $slength){
 				if (!exists $result{$current_loc + $elength}) {
@@ -414,13 +431,14 @@ sub find_nick_sites_aggressive{
 					$result{$current_loc + $elength} = 3;
 				}
 			}
-			$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
+			$current_loc = index( $seq, $enzyme_rc, $current_loc + 1);
 		}
 		
 		# Find the complement(enzyme) in the forward strand 5' -> 3', starting from the first nucleotide!!!		
 		$enzyme_rc = $enzyme;
-		$enzyme_rc =~ tr/ACGTUN/TGCAAN/;
-		$current_loc = index($seq, $enzyme_rc, 0);
+		#$enzyme_rc =~ tr/ACGTUN/TGCAAN/;
+		$enzyme_rc = complement($enzyme_rc);
+		$current_loc = index( $seq, $enzyme_rc, 0);
 		while ($current_loc != -1){
 			if($current_loc + $elength < $slength){
 				if (!exists $result{$current_loc}) {
@@ -430,7 +448,7 @@ sub find_nick_sites_aggressive{
 					$result{$current_loc} = 3;
 				}
 			}
-			$current_loc = index($seq, $enzyme_rc, $current_loc + 1);
+			$current_loc = index( $seq, $enzyme_rc, $current_loc + 1);
 		}
 		
 		#print "\t\tNickase Enzyme: $enzyme\n";
@@ -444,9 +462,9 @@ sub find_nick_sites_aggressive{
 
 sub complement {
 	my $seq = shift;
-	#$seq =~ tr/ABCDGHMNRSTUVWXYabcdghmnrstuvwxy/TVGHCDKNYSAABWXRtvghcdknysaabwxr/;
+	$seq =~ tr/ABCDGHMNRSTUVWXYabcdghmnrstuvwxy/TVGHCDKNYSAABWXRtvghcdknysaabwxr/;
 	#$seq =~ tr/ACGTacgt/TGCAtgca/;
-	$seq =~ tr/ACGTUN/TGCAAN/;
+	#$seq =~ tr/ACGTUN/TGCAAN/;
 	return $seq;
 }
 
