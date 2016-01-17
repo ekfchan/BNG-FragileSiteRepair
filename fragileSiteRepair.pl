@@ -301,7 +301,7 @@ print "\n";
 #}
 
 # Step 5: Run single molecule alignment analysis for each genome map
-print "=== Step 5: Step 5: Run single molecule alignment analysis for each genome map ===\n";
+print "=== Step 5: Run single molecule alignment analysis for each genome map ===\n";
 if (-d $inputs{alignmolDir} && -e $inputs{alignmolDir}) {
 	$stime = DateTime->now;
 	my @xmaps = findXMAPs($inputs{alignmolDir});
@@ -999,7 +999,8 @@ else {
 print "\n";
 
 
-
+copy("$log_file","$inputs{output}");
+copy("$log_err_file","$inputs{output}");
 
 
 

@@ -580,7 +580,7 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 							}
 						}
 					
-						if ($fsiteFound eq 0 && $hasalignmol eq 1) {
+						if ($fsiteFound eq 0 && $hasalignmol eq 1 && $labelsDistance >= -1) {
 							print "\tLooking for single molecule alignment-based fragile sites...\n";
 							my $firstRatio=0;
 							my $secondRatio=0;

@@ -2,7 +2,7 @@
 
 # Script to merge call structural variations on FSITEREPAIRED_FINAL.cmap 
 #
-# Usage: callSV.pl --ref <reference.cmap> --cmap <input.cmap> --errbin <input.errbin> --optarg <optArguments.xml> --outdir <output_folder> [--gaps <N-base gaps BED file>] [--prefix <contig_prefix>] [--mres <pixels_to_reduce_ref> [--force] [--n <CPU cores to use>]
+# Usage: callSV.pl --ref <reference.cmap> --cmap <input.cmap> --errbin <input.errbin> --optarg <optArguments.xml> --outdir <output_folder> [--gaps <N-base gaps BED file>] [--prefix <contig_prefix>] [--mres <pixels_to_reduce_ref> [--force] [--n <CPU cores to use>] [--stitchBED <BED file of stitch locations to filter final smap>]
 
 use strict; 
 use warnings; 
@@ -39,10 +39,10 @@ my $mem = int((((&totalmem / 1024) / 1024)) / 1024);
 # << usage statement and variable initialisation >>
 my %inputs = (); 
 $inputs{'force'}=0;
-GetOptions( \%inputs, 'ref=s', 'cmap=s', 'errbin=s', 'outdir=s', 'prefix:s', 'mres:f', 'optarg=s', 'force','n:i', 'gaps=s'); 
+GetOptions( \%inputs, 'ref=s', 'cmap=s', 'errbin=s', 'outdir=s', 'prefix:s', 'mres:f', 'optarg=s', 'force','n:i', 'gaps=s','stitchBED=s'); 
 
 if ( (!exists $inputs{ref} & !exists $inputs{cmap}) | !exists $inputs{outdir} | !exists $inputs{errbin} | !exists $inputs{optarg}) {
-	print "Usage: callSV.pl --ref <reference.cmap> --cmap <input.cmap> --errbin <input.errbin> --optarg <optArguments.xml> --outdir <output_folder> [--gaps <N-base gaps BED file>] [--prefix <contig_prefix>] [--mres <pixels_to_reduce_ref> [--force] [--n <CPU cores to use>]\n"; 
+	print "Usage: callSV.pl --ref <reference.cmap> --cmap <input.cmap> --errbin <input.errbin> --optarg <optArguments.xml> --outdir <output_folder> [--gaps <N-base gaps BED file>] [--prefix <contig_prefix>] [--mres <pixels_to_reduce_ref> [--force] [--n <CPU cores to use>] [--stitchBED <BED file of stitch locations to filter final smap>]\n"; 
 	exit 0; 
 } else {
 	print "\nStart time: "; print join ' ', $dtStart->ymd, $dtStart->hms; print "\n";
@@ -53,6 +53,7 @@ foreach my $key ("ref","cmap","errbin","optarg") {
 }
 if( exists $inputs{n} ) { $cpuCount = $inputs{n}; }
 if( exists $inputs{gaps} ) { $inputs{gaps} = abs_path($inputs{gaps}); }
+if( exists $inputs{stitchBED} ) { $inputs{stitchBED} = abs_path($inputs{stitchBED}); }
 
 # create output folders
 $inputs{outdir} = abs_path($inputs{outdir});
