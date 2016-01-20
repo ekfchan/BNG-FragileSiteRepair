@@ -37,7 +37,7 @@ my $mem = 32;
 # << usage statement and variable initialisation >>
 my %inputs = (); 
 $inputs{'force'}=0;
-GetOptions( \%inputs, 'fasta:s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'seq:i', 'cmap:s', 'n:i','j:i','optArgs:s', 'runSV', 'bnx:s', 'threshold:s', 'random', 'alignmolDir:s', 'break', 'h|help', 'endoutlier:s', 'minRatio:s','maxOverlap:i','aggressive', 'enzyme:s', 'bam:s', 'ngsBuffer:i', 'ngsBonus:i', 'breakNGSonly', 'gaps=s','maxOverlapLabels:i'); 
+GetOptions( \%inputs, 'fasta:s', 'output=s', 'maxlab:i', 'maxfill:i', 'wobble:i', 'force', 'seq:i', 'cmap:s', 'n:i','j:i','optArgs:s', 'runSV', 'bnx:s', 'threshold:s', 'random', 'alignmolDir:s', 'break', 'h|help', 'endoutlier:s', 'minRatio:s','maxOverlap:i','aggressive', 'enzyme:s', 'bam:s', 'ngsBuffer:i', 'ngsBonus:i', 'breakNGSonly', 'gaps=s','maxOverlapLabels:i', 'pvalue:s', 'skipAlignMol'); 
 
 my $getSeq = 0;
 my $threshold = 1.0;
@@ -134,6 +134,8 @@ else {
 	if( !exists $inputs{maxOverlapLabels} ||  $inputs{maxOverlapLabels}<0) { $inputs{maxOverlapLabels} = 5; }
 	
 	if ( !exists $inputs{enzyme} ) { $inputs{enzyme} = "GCTCTTC"; }
+
+	if ( !exists $inputs{pvalue} ) { $inputs{pvalue} = "1e-12"; }
 	
 	if ( exists $inputs{ngsBonus} ) { $ngsBonus = int($inputs{ngsBonus}); }
 }
@@ -163,6 +165,7 @@ if (exists $inputs{aggressive}) {
 }
 
 print "Input assembly CMAP: $inputs{cmap}\n";
+print "Pvalue for alignments: $inputs{pvalue}\n";
 
 if( !exists $inputs{optArgs} ) { $inputs{optArgs} = abs_path($ENV{"HOME"}."/scripts/optArguments_human.xml"); }
 print "Using optArguments: $inputs{optArgs}\n";
@@ -231,7 +234,7 @@ print "\n";
 # Step 2: Align input assembly CMAP to input FASTA CMAP
 print "=== Step 2: Align input assembly CMAP to input reference FASTA CMAP ===\n\n";
 if (exists $inputs{ref} && defined $inputs{ref} && -e $inputs{ref}) {
-	$cmd = "cp $scriptspath/runCharacterizeFinal.py ~/scripts/; cd $inputs{output}; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r $inputs{ref} -q $inputs{cmap} -p ~/scripts/ -n $cpuCount";
+	$cmd = "cp $scriptspath/runCharacterizeFinal.py ~/scripts/; cd $inputs{output}; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r $inputs{ref} -q $inputs{cmap} -p ~/scripts/ -n $cpuCount -a $inputs{optArgs} -v $inputs{pvalue}";
 	print "\tRunning command: $cmd\n\n";
 	system($cmd);
 }
@@ -435,7 +438,7 @@ foreach my $xmap (@xmaps) {
 		print "\n";
 		
 		# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n CPU cores to use] [--alignmolAnalysis <alignmolAnalysisOut.txt>]
-		$cmd = "perl $scriptspath/gapFill.pl -x $xmap -q $qcmap -r $rcmap -e $inputs{errbin} -o $base"."_fragileSiteRepaired --bed $bed --maxlab $inputs{maxlab} --maxfill $inputs{maxfill} --wobble $inputs{wobble} --n $cpuCount --alignmolAnalysis $inputs{output}/alignmolAnalysisOut.txt --minRatio $inputs{minRatio} --maxOverlap $inputs{maxOverlap} --maxOverlapLabels $inputs{maxOverlapLabels}";
+		$cmd = "perl $scriptspath/gapFill.pl -x $xmap -q $qcmap -r $rcmap -e $inputs{errbin} -o $base"."_fragileSiteRepaired --bed $bed --maxlab $inputs{maxlab} --maxfill $inputs{maxfill} --wobble $inputs{wobble} --n $cpuCount --alignmolAnalysis $inputs{output}/alignmolAnalysisOut.txt --minRatio $inputs{minRatio} --maxOverlap $inputs{maxOverlap} --maxOverlapLabels $inputs{maxOverlapLabels} --pvalue $inputs{pvalue}";
 		print "\tRunning command: $cmd\n";
 		print "\n";
 		#system($cmd) or die "ERROR: $cmd failed: $!\n";
@@ -511,12 +514,41 @@ close LIST;
 
 #my $input = join(" -i ",@qcmaps);
 #$cmd = "cd $inputs{output}; ~/tools/RefAligner -i $input -merge -o $splitprefix"."_fragileSiteRepaired -minsites 0";
-$cmd = "cd $inputs{output}; ~/tools/RefAligner -f -if $mergeFile -merge -o $splitprefix"."_fragileSiteRepaired -minsites 0";
+
+mkpath($inputs{output}."/merged_cmaps") or die "ERROR: Cannot create output directory $inputs{output}/merged_cmaps: $!\n";
+#print "\n";
+
+$cmd = "cd $inputs{output}/merged_cmaps; ~/tools/RefAligner -f -if $mergeFile -merge -o $splitprefix"."_fragileSiteRepaired_unmerged -minsites 0 -stdout -stderr";
 print "Running command: $cmd\n";
-print "\n";
 system($cmd);
-my $finalmap = "$inputs{output}/$splitprefix"."_fragileSiteRepaired.cmap";
+print "\n";
+
+$cmd = "cd $inputs{output}/merged_cmaps; ~/tools/RefAligner -f -i $splitprefix"."_fragileSiteRepaired_unmerged.cmap -pairmerge 100 0.1 -T 1e-15 -mres 1e-3 -FP 0.2 -FN 0.02 -sr 0.01 -sd 0.0 -sf 0.2 -outlier 0 -endoutlier 1e-4 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -biaswt 0 -A 10 -HSDrange 1.0 -pairmergeRepeat -f -maxthreads $cpuCount -o $splitprefix"."_fragileSiteRepaired -minsites 0 -stdout -stderr";
+print "Running command: $cmd\n";
+system($cmd);
+print "\n";
+
+my @pairmergemaps = findCMAPs($inputs{output}."/merged_cmaps","$splitprefix"."_fragileSiteRepaired_contig");
+@pairmergemaps = sort @pairmergemaps;
+$mergeFile = "$inputs{output}/merged_cmaps/mergeList.txt";
+open (LIST, ">$mergeFile") or die "ERROR: Could not open $mergeFile: $!\n";
+print "Merging ".scalar(@pairmergemaps)." fragileSiteRepaired genome maps...\n\n";
+foreach (@pairmergemaps) {
+	#print "QCMAP: $_\n";
+	$_ = abs_path($inputs{output}."/merged_cmaps/$_");
+	print LIST "$_\n";
+}
+close LIST;
+
+$cmd = "cd $inputs{output}/merged_cmaps; ~/tools/RefAligner -f -if $mergeFile -merge -o $splitprefix"."_fragileSiteRepaired -minsites 0 -stdout -stderr";
+print "Running command: $cmd\n";
+system($cmd);
+print "\n";
+
+
+my $finalmap = "$inputs{output}/merged_cmaps/$splitprefix"."_fragileSiteRepaired.cmap";
 print "\n\n";
+
 
 print "Generating merged stitchPositions BED...";
 my $mergedBED = ""; 
@@ -596,7 +628,7 @@ if (-e $finalmap && (exists $inputs{ref})) {
 	# my $newMap = "$inputs{output}"."/"."$splitprefix"."_fragileSiteRepaired_merged.cmap";
 	#usage: runCharacterizeFinal.py [-h] [-t REFALIGNER] [-r REFERENCEMAP] [-q QUERYMAP] [-x XMAP] [-p PIPELINEDIR] [-a OPTARGUMENTS] [-n NUMTHREADS] 
 	# $cmd = "cp runCharacterizeFinal.py ~/scripts/; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r $inputs{ref} -q $newMap -p ~/scripts/ -n $cpuCount";
-	$cmd = "cp $scriptspath/runCharacterizeFinal.py ~/scripts/; cd $inputs{output}; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r $inputs{ref} -q $finalmap -p ~/scripts/ -n $cpuCount";
+	$cmd = "cp $scriptspath/runCharacterizeFinal.py ~/scripts/; cd $inputs{output}; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r $inputs{ref} -q $finalmap -p ~/scripts/ -n $cpuCount -a $inputs{optArgs}";
 	print "\tRunning command: $cmd\n\n";
 	system($cmd);
 }
@@ -612,6 +644,7 @@ my $alignmolErrbin="";
 print "=== Step 10: Run single molecule alignments against fragileSiteRepaired merged cmap ===\n\n";
 my $alignmolXmap="";
 my $alignmolRmap="";
+if (!$inputs{skipAlignMol}) {
 if (defined $inputs{bnx} && exists $inputs{bnx} && defined $inputs{err} && exists $inputs{err}) {
 	print "Running alignment of $inputs{bnx} to $finalmap\n\n";
 	mkpath("$inputs{output}/alignmol") or die "ERROR: Cannot create output directory $inputs{output}/alignmol: $!\n";
@@ -645,6 +678,11 @@ else {
 	print "Skipping Step 10 Single molecule alignments. Input BNX and/or molecules ERR not provided or does not exist! $!\n";
 	print "\n";
 }
+}
+else {
+	print "Skipping Step 10 Single molecule alignments. --skipAlignMol enabled! $!\n";
+	print "\n";
+}
 
 print "\n";
 
@@ -657,6 +695,7 @@ my $scoredSTATS = $scoredBED;
 $scoredBED = $scoredBED."_scored.bed";
 $scoredSTATS = $scoredSTATS."_scoreStats.csv";
 
+if (!$inputs{skipAlignMol}) {
 if (defined $inputs{bnx} && exists $inputs{bnx} && -e $finalmap && exists $inputs{ref} && -e $alignmolErrbin && -e $alignmolXmap && -e $alignmolRmap) {
 	print "Scoring BED file $mergedBED based on molecule alignments in $alignmolXmap\n\n";
 	mkpath("$inputs{output}/scoreBED") or warn "WARNING: Cannot create output directory $inputs{output}/scoreBED: $!\nNext steps may fail...\n";
@@ -682,6 +721,12 @@ else {
 	print "Skipping Step 11 BED scoring. Input BNX, reference, or fragileSiteRepaired merged CMAP not provided or does not exist! $!\n";
 	print "\n";
 }
+}
+else {
+	print "Skipping Step 11 BED scoring. --skipAlignMol enabled! $!\n";
+	print "\n";
+}
+
 print "\n";
 
 
@@ -739,7 +784,7 @@ if (-e $newfinalmap) {
 	
 	if (-e $newfinalmap && (exists $inputs{ref})) {
 		#copy("$inputs{ref}","$inputs{output}") or print "WARNING: Copy of input reference $inputs{ref} failed: $!\n"; 
-		$cmd = "cp $scriptspath/runCharacterizeFinal.py ~/scripts/; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r $inputs{ref} -q $newfinalmap -p ~/scripts/ -n $cpuCount";
+		$cmd = "cp $scriptspath/runCharacterizeFinal.py ~/scripts/; python ~/scripts/runCharacterizeFinal.py -t ~/tools/RefAligner -r $inputs{ref} -q $newfinalmap -p ~/scripts/ -n $cpuCount -a $inputs{optArgs}";
 		print "\tRunning command: $cmd\n\n";
 		system($cmd);
 		
@@ -1140,6 +1185,16 @@ sub findXMAPs {
 	return @xmaps;
 }
 
+sub findCMAPs {
+	my $in = shift;
+	my $str = shift;
+	opendir(DIR, $in);
+	my @cmaps = grep(/$str/,readdir(DIR));
+	closedir(DIR);
+	
+	return @cmaps;
+}
+
 sub findQCMAPs {
 	my $in = shift;
 	opendir(DIR, $in);
@@ -1259,6 +1314,7 @@ sub Usage {
 	print "\t--minRatio <ratio> : minimum ratio of single molecule alignments that must end at genome maps ends to be classified as a potential fragile site. Requires --alignmolDir. Default: 0.70\n";
 	print "\t--maxOverlap <bp> : maximum number of basepairs overlap between maps to allow merge. Default: 20000\n";
 	print "\t--maxOverlapLabels <int labels> : maximum number of labels overlap between maps to allow merge. Default: 5\n";
+	print "\t--pvalue <pvalue> : Minimum threshold pvalue used for alignments. Recommended to match pvalue from optArguments characterizeFinal. See RefAligner help for more info. Default: 1e-12\n";
 	print "\n";
 	print "\t--n <CPU cores> : Maximum number of CPU cores/threads to use. Default: nproc\n";
 	print "\t--j <number jobs> : Maximum number of parallel jobs. Default: nproc/6\n";

@@ -18,6 +18,7 @@ def getArgs() :
     parser.add_argument('-p', dest='pipelineDir', help='Pipeline dir (optional, defaults to current directory)')
     parser.add_argument('-a', dest='optArguments', help='Path to optArguments.xml (optional, default in Pipeline dir if found, otherwise required)')
     parser.add_argument('-n', dest='numThreads', help='Number of threads (cores) to use (optional, default 4)', default=4, type=int)
+    parser.add_argument('-v', dest='pvalue', help='Pvalue (-T) used for alignment', default="1e-12")
     result = parser.parse_args()
 
     #check all Pipeline dependencies
@@ -88,12 +89,18 @@ def getArgs() :
         print "Number of threads value invalid (must be >= 0): "+nthreads
         sys.exit(1)
 
+    #pvalue
+    if result.pvalue : #supplied on command line
+        pvalue = result.pvalue
+    else :
+        pvalue = "1e-12"    
+
     #yes, this is messy...but I don't want another class (besides varsPipeline) and they just go to runCharacterize
-    return cwd, rabin, refcmap, contigdir, contigbase, runaligns, xmappath, optargs, nthreads
+    return cwd, rabin, refcmap, contigdir, contigbase, runaligns, xmappath, optargs, nthreads, pvalue
 
 
 
-def runCharacterize(cwd, rabin, refcmap, contigdir, contigbase, runaligns, xmappath, optargs, nthreads):
+def runCharacterize(cwd, rabin, refcmap, contigdir, contigbase, runaligns, xmappath, optargs, nthreads, pvalue):
     '''Load Pipeline files from first arg; configure CharacterizeModule; run alignments if runaligns;
     report on those alignments or the xmap provided as xmappath.
     '''
@@ -143,6 +150,7 @@ def runCharacterize(cwd, rabin, refcmap, contigdir, contigbase, runaligns, xmapp
         varsP.stdoutlog = True
         varsP.pipeReportFile = os.path.join(contigdir, "pipeReport.txt")
         varsP.parseArguments() #parses optArgumentsFile
+        varsP.replaceParam("characterizeFinal", "-T", pvalue)
         if printargs :
             print "\nRunning Characterization with arguments:\n" + " ".join(varsP.argsListed('characterizeFinal')) + '\n'
         if hasattr(util, "InitStatus") : #if old version, skip
