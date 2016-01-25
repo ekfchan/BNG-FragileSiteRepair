@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+
+<hybridScaffold>
+	<version>
+      <flag attr="version" val0="$Id: hybridScaffold_config.xml 4290 2015-11-20 00:13:03Z apang $"/>
+    </version>
+		<global>
+			<flag attr="maxmem" val0="128" display="Maximum memory (GB)" group="Global options" description="Define the maximum amount of RAM in gigabytes to be used by each process."/>
+			<flag attr="maxthreads" val0="40" display="Max threads" group="Global options" description="Define maximum number of threads to be used by each process."/>
+		</global>
+		<fasta2cmap>
+			<flag attr="enzyme" val0="BspQI" display="Enzyme" group="FASTA to CMAP digestion" description="Define single enzyme for in-silico FASTA to CMAP digestion. Avalible enzymes: BspQI, BbvCI, BsmI, BsrDI, bseCI, BssSI." />	
+			<flag attr="channelNum" val0="1" display="Channel number" group="FASTA to CMAP digestion" description="Specify the channel the enzyme was used." />	
+			<flag attr="minLabels" val0="0" display="Minimum label sites" group="FASTA to CMAP digestion" description="Specify minimum number of label sites per digested contig."/>	
+			<flag attr="minLength" val0="0" display="Minimum length (Kb)" group="FASTA to CMAP digestion" description="Specify minimum length in Kb of each digested contig."/>	
+		</fasta2cmap>
+		<align1>
+			<flag attr="T" val0="1e-10" display="P-value" group="Initial alignment" description="Minimum confidence value to output intial alignments. Recommended starting value of 1e-5/genome size in Mb."/>	
+			<flag attr="endoutlier" val0="1e-3" display=""/>	
+			<flag attr="outlier" val0="1e-4" display=""/>	
+			<flag attr="extend" val0="1" display=""/>	
+			<flag attr="FN" val0="0.05" display=""/>	
+			<flag attr="FP" val0="0.5" display=""/>	
+			<flag attr="sf" val0="0.2" display=""/>	
+			<flag attr="sd" val0="0.1" display=""/>	
+			<flag attr="sr" val0="0.02" display=""/>	
+			<flag attr="res" val0="2.9" display=""/>	
+			<flag attr="resSD" val0="0.75" display=""/>	
+			<flag attr="mres" val0="1.2" display=""/>	
+			<flag attr="A" val0="5" display=""/>	
+			<flag attr="biaswt" val0="0" display=""/>	
+			<flag attr="M" val0="1" display=""/>	
+			<flag attr="Mfast" val0="0" display=""/>	
+			<flag attr="deltaX" val0="9" display=""/>	
+			<flag attr="deltaY" val0="9" display=""/>	
+			<flag attr="xmapchim" val0="14" display=""/>	
+			<flag attr="xmapUnique" val0="14" display=""/>	
+			<flag attr="RepeatMask" val0="4" val1="0.01" display=""/>	
+			<flag attr="RepeatRec" val0="0.7" val1="0.6" val2="1.4" display=""/>	
+			<flag attr="hash" val0="-hashgen 5 3 2.4 1.5 0.05 5.0 1 1 2" val1="-hash -hashdelta 10" val2="-hashmaxmem 64" display=""/>	
+		</align1>
+		<assignAlignType>
+			<flag attr="T_cutoff" val0="1e-13" display="P-value" group="Chimeric/conflicting alignment flagging" description="Minimum confidence value used to flag chimeric/conflicting alignments. Recommand to set it to be the same as the merge_Tvalue below."/>	
+			<flag attr="max_overhang" val0="5" display=""/>				
+		</assignAlignType>
+		<cut_conflicts>
+			<flag attr="window_size" val0="10000" display="Distance (bp)" group="Conflict-cut" description="The distance (bp) from a conflicting site within which the chimeric quality score of BioNano genome map labels will be examined"/>	
+			<flag attr="min_quality_score_threshold" val0="35" display="Percent (%)" group="Conflict-cut" description="The minimal percentage of molecules spanning to the left and right of a label of interest, thus supporting the BioNano assembly at that region"/>				
+			<flag attr="min_coverage_threshold" val0="10" display="Coverage (X)" group="Conflict-cut" description="The minimal number of molecules aligning to a label of interest in the BioNano assembly"/>				
+		</cut_conflicts>
+		<mergeNGS_BN>
+			<flag attr="merge_Tvalue" val0="1e-13" display="P-value" group="Merging" description="Minimum confidence value used to merge alignments. Recommand to set it to be the same as the assignAlignType T_cutoff above"/>				
+			<flag attr="id_shift" val0="100000000" display="BioNano cmap id shift" group="Merging" description="Value to shift the BioNano cmap id to distinguish the BioNano cmaps from sequence cmaps. Recommand to set it to be greater than the number of sequence entries."/>
+			<flag attr="max_merge_rounds" val0="40" display=""/>		
+			<flag attr="endoutlier" val0="1e-4" display=""/>				
+			<flag attr="outlier" val0="1e-4" display=""/>				
+			<flag attr="biaswt" val0="0" display=""/>				
+			<flag attr="sd" val0="0.1" display=""/>				
+			<flag attr="res" val0="2.9" display=""/>				
+			<flag attr="sf" val0="0.2" display=""/>				
+			<flag attr="RepeatMask" val0="4" val1="0.01" display=""/>				
+			<flag attr="RepeatRec" val0="0.7" val1="0.6" val2="1.4" display=""/>	
+			<flag attr="pairmerge" val0="160" val1="0.2" display=""/>	
+			<flag attr="maxmem" val0="64" display=""/>				
+		</mergeNGS_BN>
+		<align_final>
+			<flag attr="T" val0="1e-10" display="P-value" group="Final alignment" description="Minimum confidence score used to align NGS contigs back to hybrid scaffold."/>				
+			<flag attr="endoutlier" val0="1e-3" display=""/>				
+			<flag attr="outlier" val0="1e-4" display=""/>				
+			<flag attr="extend" val0="0" display=""/>				
+			<flag attr="FN" val0="0.05" display=""/>				
+			<flag attr="FP" val0="0.5" display=""/>				
+			<flag attr="sf" val0="0.2" display=""/>				
+			<flag attr="sd" val0="0.1" display=""/>				
+			<flag attr="sr" val0="0.02" display=""/>				
+			<flag attr="res" val0="0" display=""/>				
+			<flag attr="resSD" val0="0.75" display=""/>				
+			<flag attr="mres" val0="0" display=""/>				
+			<flag attr="A" val0="5" display=""/>				
+			<flag attr="biaswt" val0="0" display=""/>				
+			<flag attr="M" val0="1" display=""/>				
+			<flag attr="Mfast" val0="0" display=""/>				
+			<flag attr="deltaX" val0="9" display=""/>				
+			<flag attr="deltaY" val0="9" display=""/>					
+			<flag attr="RepeatMask" val0="4" val1="0.01" display=""/>				
+			<flag attr="RepeatRec" val0="0.7" val1="0.6" val2="1.4" display=""/>	
+			<flag attr="BestRef" val0="1" display=""/>				
+			<flag attr="nosplit" val0="2" display=""/>						
+			<flag attr="hash" val0="-hashgen 5 3 2.4 1.5 0.05 5.0 1 1 2" val1="-hash -hashdelta 10" val2="-hashmaxmem 64" display=""/>	
+		</align_final>
+</hybridScaffold>

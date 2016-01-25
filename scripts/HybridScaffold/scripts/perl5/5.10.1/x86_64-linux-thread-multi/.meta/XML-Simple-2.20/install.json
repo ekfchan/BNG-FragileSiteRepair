@@ -1,0 +1,1 @@
+{"provides":{"TagsToUpper":{"file":"t/lib/TagsToUpper.pm"},"XML::Simple":{"version":"2.20","file":"lib/XML/Simple.pm"}},"target":"XML::Simple","version":"2.20","name":"XML::Simple","dist":"XML-Simple-2.20","pathname":"G/GR/GRANTM/XML-Simple-2.20.tar.gz"}

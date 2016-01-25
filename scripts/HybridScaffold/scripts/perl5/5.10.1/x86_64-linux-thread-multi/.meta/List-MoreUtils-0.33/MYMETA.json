@@ -1,0 +1,43 @@
+{
+   "abstract" : "Provide the stuff missing in List::Util",
+   "author" : [
+      "Tassilo von Parseval <tassilo.von.parseval@rwth-aachen.de>"
+   ],
+   "dynamic_config" : 0,
+   "generated_by" : "ExtUtils::MakeMaker version 6.56, CPAN::Meta::Converter version 2.142060",
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "List-MoreUtils",
+   "no_index" : {
+      "directory" : [
+         "t",
+         "inc"
+      ]
+   },
+   "prereqs" : {
+      "build" : {
+         "requires" : {
+            "Test::More" : "0.42"
+         }
+      },
+      "configure" : {
+         "requires" : {
+            "ExtUtils::CBuilder" : "0.27",
+            "ExtUtils::MakeMaker" : "6.52"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "Test::More" : "0.82",
+            "perl" : "5.00503"
+         }
+      }
+   },
+   "release_status" : "stable",
+   "version" : "0.33"
+}

@@ -1,0 +1,11 @@
+/usr/local/lib64/perl5/Attribute/Params/Validate.pm
+/usr/local/lib64/perl5/Params/Validate.pm
+/usr/local/lib64/perl5/Params/Validate/Constants.pm
+/usr/local/lib64/perl5/Params/Validate/PP.pm
+/usr/local/lib64/perl5/Params/Validate/XS.pm
+/usr/local/lib64/perl5/Params/ValidatePP.pm
+/usr/local/lib64/perl5/Params/ValidateXS.pm
+/usr/local/lib64/perl5/auto/Params/Validate/XS/XS.bs
+/usr/local/lib64/perl5/auto/Params/Validate/XS/XS.so
+/usr/local/share/man/man3/Attribute::Params::Validate.3pm
+/usr/local/share/man/man3/Params::Validate.3pm

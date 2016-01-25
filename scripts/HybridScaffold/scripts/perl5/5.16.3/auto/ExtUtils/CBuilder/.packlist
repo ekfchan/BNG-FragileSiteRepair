@@ -1,0 +1,16 @@
+/usr/local/share/man/man3/ExtUtils::CBuilder.3pm
+/usr/local/share/man/man3/ExtUtils::CBuilder::Platform::Windows.3pm
+/usr/local/share/perl5/ExtUtils/CBuilder.pm
+/usr/local/share/perl5/ExtUtils/CBuilder/Base.pm
+/usr/local/share/perl5/ExtUtils/CBuilder/Platform/Unix.pm
+/usr/local/share/perl5/ExtUtils/CBuilder/Platform/VMS.pm
+/usr/local/share/perl5/ExtUtils/CBuilder/Platform/Windows.pm
+/usr/local/share/perl5/ExtUtils/CBuilder/Platform/Windows/BCC.pm
+/usr/local/share/perl5/ExtUtils/CBuilder/Platform/Windows/GCC.pm
+/usr/local/share/perl5/ExtUtils/CBuilder/Platform/Windows/MSVC.pm
+/usr/local/share/perl5/ExtUtils/CBuilder/Platform/aix.pm
+/usr/local/share/perl5/ExtUtils/CBuilder/Platform/android.pm
+/usr/local/share/perl5/ExtUtils/CBuilder/Platform/cygwin.pm
+/usr/local/share/perl5/ExtUtils/CBuilder/Platform/darwin.pm
+/usr/local/share/perl5/ExtUtils/CBuilder/Platform/dec_osf.pm
+/usr/local/share/perl5/ExtUtils/CBuilder/Platform/os2.pm

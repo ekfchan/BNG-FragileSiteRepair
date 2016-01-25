@@ -406,6 +406,7 @@
 	<flag attr="-AlignRes"      val0="2."/>
         <flag attr="-outlierExtend" val0="12" val1="24"/>
 	<flag attr="-Kmax"          val0="12"/>
+	<flag attr="-XmapStatWrite" val0="molecule_stats.txt" />
         <flag attr="-f" />   
 	<include val0="largeNodeMem" />
     </characterizeDefault>

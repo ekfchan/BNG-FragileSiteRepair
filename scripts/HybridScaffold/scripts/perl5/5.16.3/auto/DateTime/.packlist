@@ -1,0 +1,13 @@
+/usr/local/lib64/perl5/DateTime.pm
+/usr/local/lib64/perl5/DateTime/Duration.pm
+/usr/local/lib64/perl5/DateTime/Helpers.pm
+/usr/local/lib64/perl5/DateTime/Infinite.pm
+/usr/local/lib64/perl5/DateTime/LeapSecond.pm
+/usr/local/lib64/perl5/DateTimePP.pm
+/usr/local/lib64/perl5/DateTimePPExtra.pm
+/usr/local/lib64/perl5/auto/DateTime/DateTime.bs
+/usr/local/lib64/perl5/auto/DateTime/DateTime.so
+/usr/local/share/man/man3/DateTime.3pm
+/usr/local/share/man/man3/DateTime::Duration.3pm
+/usr/local/share/man/man3/DateTime::Infinite.3pm
+/usr/local/share/man/man3/DateTime::LeapSecond.3pm

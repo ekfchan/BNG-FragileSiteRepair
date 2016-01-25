@@ -1,0 +1,22 @@
+=head2 Fri Mar  6 12:43:11 2015: C<Module> L<local::lib|local::lib>
+
+=over 4
+
+=item *
+
+C<installed into: /home/palak/perl5/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.000015>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+

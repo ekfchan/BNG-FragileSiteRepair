@@ -15,9 +15,9 @@ use warnings;
 use Data::Dumper;
 sub getMissedLabelHash;
 
-print "\n";
-print qx/ps -o args $$/;
-print "\n";
+#print "\n";
+#print qx/ps -o args $$/;
+#print "\n";
 
 open FILE, "$ARGV[0]" or die $!;
 my $outName = $ARGV[0]; 
@@ -31,7 +31,9 @@ my $outName_orig = $outName;
 $outName = $outName."_.temp";
 open OUT, ">$outName" or die $!;
 
-my $idOffset = 100000;
+my $doOutput = 1;
+
+my $idOffset = 1000000000;
 my @cmap_out;		#references of hash table of cmap to print out
 my @firstContig;	#reference of hash table of cmaps whose contig is <first_contig_ID>
 my @secondContig;	#reference of hash table of cmaps whose contig is <second_contig_ID>
@@ -49,6 +51,9 @@ if ($labelsDistance<0 && $ARGV[5]<0) {
 
 my $firstQryConf = $ARGV[8];
 my $secondQryConf = $ARGV[9];
+
+my $excludeFile = $ARGV[10];
+open (EXCLUDE, '>>', $excludeFile) or die "ERROR; $!\n";
 
 #read input CMAP
 while (my $line = <FILE>) {
@@ -112,59 +117,115 @@ while (my $line = <FILE>) {
 	
 	my $mergedId = $ARGV[1] + $idOffset;
 
+	my $firstContigSites = scalar(@firstContig) - 1;	#number of first contigs (elements in @firstContig)
+	my $firstContigSitesOrig = $firstContig[$firstContigSites]->{'NumSites'};
+	my $firstContigSitesStartIdx = 0; 
+	my $firstContigSitesEndIdx = $firstContig[$firstContigSites]->{'NumSites'};
+	#my $firstContigStart = $firstContig[0]->{'Position'} - 20;
+	#my $firstContigStartOrig = $firstContig[0]->{'Position'} - 20;
+	my $firstContigStart = 0;
+	my $firstContigStartOrig = 0;
+	my $firstContigEnd = $firstContig[$firstContigSites]->{'ContigLength'};	#assume the contigs are sorted
+	my $firstContigEndOrig = $firstContig[$firstContigSites]->{'ContigLength'};
 	
-	my $firstSites = scalar(@firstContig) - 1;	#number of first contigs (elements in @firstContig)
-	#print "Sites in first contig: $firstSites\n";
-	#my $firstContigStart = $firstContig[0]->{'Position'};
-	my $firstContigEnd = $firstContig[$firstSites]->{'Position'};	#assume the contigs are sorted
-	my $firstContigEndOrig = $firstContig[$firstSites]->{'Position'};
-	my $firstContigSites = $firstContig[$firstSites]->{'NumSites'}; 
 	
-	#my $secondContigMolStart = ($secondContig[0]->{'Position'}) - 20;
-	my $secondSites = scalar(@secondContig) - 1;	#number of second contigs (elements in @secondContig)
-	my $secondContigStart = $secondContig[0]->{'Position'};
-	my $secondContigEnd = $secondContig[$secondSites]->{'Position'};
-	my $secondContigSites = $secondContig[$secondSites]->{'NumSites'};
-	
-	my $mergedLength = $firstContigEnd + $secondContigEnd + $ARGV[5];
-	my $mergedSites = $firstContigSites + $secondContigSites;
-	my $positionOffset = $firstContigEnd + $ARGV[5];	
-	
-	my $secondIdxStart = 0;
-	my $secondSitesOffset = 0;
-	my $secondPosOffset = 0;
-	my $secondContigEndOrig = $secondContigEnd;
-	my $firstSitesOrig = $firstSites;
-	if ($labelsDistance < 0) {
-		$mergedSites = $firstContigSites + $secondContigSites + $labelsDistance;
-		if ($firstQryConf >= $secondQryConf) {
-			$firstSites = $firstSites + $labelsDistance;
-			$firstContigEnd = $firstContigEnd + $ARGV[5];
+	my $secondContigSites = scalar(@secondContig) - 1;	#number of second contigs (elements in @secondContig)
+	my $secondContigSitesOrig = $secondContig[$secondContigSites]->{'NumSites'};
+	my $secondContigSitesStartIdx = 0;
+	my $secondContigSitesEndIdx = $secondContig[$secondContigSites]->{'NumSites'};
+	#my $secondContigStart = $secondContig[0]->{'Position'} - 20;
+	#my $secondContigStartOrig = $secondContig[0]->{'Position'} - 20;
+	my $secondContigStart = 0;
+	my $secondContigStartOrig = 0;
+	my $secondContigEnd = $secondContig[$secondContigSites]->{'ContigLength'};
+	my $secondContigEndOrig = $secondContig[$secondContigSites]->{'ContigLength'};
+
+	my $positionOffset = ($firstContigEnd - $firstContigStart) + abs($ARGV[5]) - 1;
+
+	# deal with overlapping contigs
+	my $sitesOffset = 0; 
+	my $posOffset = 0;
+	my $reverseOffset = 0;
+	my $reverseOffset2 = 0;
+	my $forwardOffset = 0;
+	my $forwardPosOffset = 0;
+	my $reversePosOffset = 0;
+	my $forwardOffset2 = 0;
+	if ($labelsDistance < 0 && $ARGV[5]<0) {
+		#$mergedSites = $firstContigSites + $secondContigSites + $labelsDistance;
+		$sitesOffset = abs($labelsDistance);
+		$posOffset = abs($ARGV[5]);
+
+		
+		# if first contig conf < second contig conf, trim first contig
+		if ($firstQryConf < $secondQryConf) { 
+			$firstContigSites = $firstContigSites + $labelsDistance;
+			if ($ARGV[2] eq "+") {
+				$firstContigEnd = $firstContigEnd - $posOffset;
+				$firstContigSitesEndIdx = $firstContigSitesEndIdx - $sitesOffset;
+				$forwardOffset2 = abs($ARGV[7]);
+			}
+			else {
+				$firstContigEnd = $firstContigEnd - $posOffset;
+				#$firstContigStart = $firstContigStart + $posOffset;
+				$firstContigSitesEndIdx = $firstContigSitesEndIdx - $sitesOffset;
+				#$reversePosOffset = abs($ARGV[5]);
+				
+			}
 		}
 		else {
-			$secondSites = $secondSites + $labelsDistance;
-			$secondContigEnd = $secondContigEnd + $ARGV[5];
-			$secondIdxStart = $secondIdxStart + abs($labelsDistance);
-			$secondSitesOffset = abs($labelsDistance);
-			$secondPosOffset = $ARGV[5];
-			#$positionOffset = $firstContigEnd;
+			$secondContigSites = $secondContigSites + $labelsDistance;
+			if ($ARGV[4] eq "+") {
+				$secondContigStart = $secondContigStart + $posOffset;
+				$secondContigSitesStartIdx = $secondContigSitesStartIdx + $sitesOffset;	
+				$forwardOffset = abs($ARGV[7]);
+				$forwardPosOffset = abs($ARGV[5]);
+
+						
+			}
+			else {
+				#$secondContigEnd = $secondContigEnd - $posOffset;
+				$secondContigStart = $secondContigStart + $posOffset;
+				$secondContigSitesStartIdx = $secondContigSitesStartIdx + $sitesOffset;
+				$reverseOffset = abs($ARGV[7]);
+			}
 		}
-	}
 		
+		$positionOffset = ($firstContigEnd - $firstContigStart);
+	}
+
+
+	my $mergedLength = ($firstContigEnd - $firstContigStart) + ($secondContigEnd - $secondContigStart);
+	if ($ARGV[5] > 1) {
+		$mergedLength = $mergedLength + abs($ARGV[5]) + 1;
+	}
+	
+	my $mergedSites = $firstContigSites + $secondContigSites;
+		
+	
+			
 	if ($missedLabelPadding != 0) {
 		#$positionOffset = $firstContigEnd + ($ARGV[5] - $missedLabelPadding) + 1;
 		$mergedSites += 1;
 	}
+
 	my $theRestCount=0; 
 	my $lastSite=0;
 	my $lastPos=0;
+
+	
 	
 #IF orientation is +/+
 if (($ARGV[2] eq '+' && $ARGV[4] eq '+')) {	
-	
+
 	#output first contig	
-	for (my $i=0; $i < $firstSites; $i++ ) {
+	for (my $i=$firstContigSitesStartIdx; $i < $firstContigSitesEndIdx; $i++ ) {
 		my $hash = $firstContig[$i];	#reference to the ith value in anonymous hash (containing first contig cmap) 
+		
+		if ($hash->{'Position'} > $firstContigEnd) {
+			$doOutput = 0;
+			last;
+		}
 		
 		my $theRest = $hash->{'TheRest'};
 		my @s = split("\t",$theRest);
@@ -189,12 +250,12 @@ if (($ARGV[2] eq '+' && $ARGV[4] eq '+')) {
 			);
 		push @mergedContig, \%new_hash_ref; }
 		
-	my $sitesOffset = $firstSites;
+	my $offset = $firstContigSites;
 	if ($missedLabelPadding != 0) {
 		my ($missedSite_ref, $missedLabelPos) = getMissedLabelHash($theRestCount, $missedLabelPadding, $lastPos, $lastSite);
 		my %missedSite = %$missedSite_ref;
 		push @mergedContig, \%missedSite; 
-		$sitesOffset = $sitesOffset + 1;
+		$offset = $offset + 1;
 	}
 			
 
@@ -202,19 +263,26 @@ if (($ARGV[2] eq '+' && $ARGV[4] eq '+')) {
 	#my $positionOffset = $firstContigEnd + $ARGV[5];
 	#my $positionOffset = $firstContigEnd + $missedLabelPadding + 1;
 	 
-	for (my $i=$secondIdxStart; $i < ($secondSites+1+$secondSitesOffset); $i++ ) {
+	for (my $i=$secondContigSitesStartIdx; $i < ($secondContigSitesEndIdx+1); $i++ ) {
 		my $hash = $secondContig[$i];
-		#if ($i==$secondIdxStart && $secondIdxStart>0) {
-		#	$secondPosOffset = $hash->{'Position'};
-		#	$secondPosOffset = abs($ARGV[5]);
-		#}
+
+		my $pos = $hash->{'Position'} + $positionOffset - $forwardPosOffset;
+		if ($i == $secondContigSitesEndIdx) {
+			$pos = $mergedLength;
+		}
+
+		if ($pos < $lastPos) {
+			$doOutput = 0;
+			last;
+		}
+		
 		my %new_hash_ref = (
 				"CMapId"  => "$mergedId", # 2020
 				"ContigLength" => "$mergedLength", # 718132.6
 				"NumSites"  => "$mergedSites", # 74
-				"SiteID"  => $hash->{'SiteID'} + $sitesOffset - $secondSitesOffset, # 1
+				"SiteID"  => $hash->{'SiteID'} + $offset - $forwardOffset, # 1
 				"LabelChannel"  => "$hash->{'LabelChannel'}", # 1
-				"Position"  => $hash->{'Position'} + $positionOffset, # 20.0
+				"Position"  => $pos, # 20.0
 				"StdDev" => "$hash->{'StdDev'}", # 81.9
 				"Coverage" => "$hash->{'Coverage'}", # 14.0
 				"Occurrence" => "$hash->{'Occurrence'}", # 14.0
@@ -231,8 +299,13 @@ if (($ARGV[2] eq '+' && $ARGV[4] eq '+')) {
 elsif (($ARGV[2] eq '+' && $ARGV[4] eq '-')) {
 	
 	#output first contig 
-	for (my $i=0; $i < $firstSites; $i++ ) {
+	for (my $i=$firstContigSitesStartIdx; $i < $firstContigSitesEndIdx; $i++ ) {
 		my $hash = $firstContig[$i];
+
+		if ($hash->{'Position'} > $firstContigEnd) {
+			$doOutput = 0;
+			last;
+		}
 		
 		my $theRest = $hash->{'TheRest'};
 		my @s = split("\t",$theRest);
@@ -257,35 +330,41 @@ elsif (($ARGV[2] eq '+' && $ARGV[4] eq '-')) {
 			);		
 		push @mergedContig, \%new_hash_ref; }
 		
-	my $sitesOffset = $firstSites + 1; 
+	my $offset = $firstContigSites; 
 	if ($missedLabelPadding != 0) {
 		my ($missedSite_ref, $missedLabelPos) = getMissedLabelHash($theRestCount, $missedLabelPadding, $lastPos, $lastSite);
 		my %missedSite = %$missedSite_ref;
 		push @mergedContig, \%missedSite; 
-		$sitesOffset = $sitesOffset + 1;
+		$offset = $offset + 1;
 	}
 	
 	#output REVERSED second contig
 	#my $positionOffset = $firstContigEnd + $ARGV[5];
 	#my $positionOffset = $firstContigEnd + $missedLabelPadding + 1;
 
-	if ($labelsDistance < 0) {
-		if ($firstQryConf < $secondQryConf) {
-			$positionOffset = $firstContigEnd;
-		}
-	}
-	
 	@secondContig = reverse(@secondContig);
+	if ($doOutput==0) {
+		@secondContig = reverse(@secondContig);
+	}
+
 	
-	for (my $i=(1+$secondIdxStart); $i < ($secondSites+1+$secondIdxStart); $i++ ) {
+	for (my $i=(1+$secondContigSitesStartIdx); $i < (1+$secondContigSitesEndIdx); $i++ ) {
 		my $hash = $secondContig[$i];
+		
+		my $pos = ($secondContigEndOrig - $hash->{'Position'}) + $positionOffset - $secondContigStart;
+		if ($pos < $lastPos) {
+			$doOutput = 0;
+			@secondContig = reverse(@secondContig);
+			last;
+		}
+	
 		my %new_hash_ref = (
 				"CMapId"  => "$mergedId", # 2020
 				"ContigLength" => "$mergedLength", # 718132.6
 				"NumSites"  => "$mergedSites", # 74
-				"SiteID"  => ($secondSites - $hash->{'SiteID'}) + $sitesOffset, # 1
+				"SiteID"  => ($secondContigSitesOrig - $hash->{'SiteID'}) + $offset - $reverseOffset + 1, # 1
 				"LabelChannel"  => "$hash->{'LabelChannel'}", # 1
-				"Position"  => ($secondContigEnd - $hash->{'Position'}) + $positionOffset, # 20.0
+				"Position"  => $pos, # 20.0
 				"StdDev" => "$hash->{'StdDev'}", # 81.9
 				"Coverage" => "$hash->{'Coverage'}", # 14.0
 				"Occurrence" => "$hash->{'Occurrence'}", # 14.0
@@ -302,7 +381,7 @@ elsif (($ARGV[2] eq '+' && $ARGV[4] eq '-')) {
 			"NumSites"  => "$mergedSites", # 74
 			"SiteID"  => $mergedSites + 1, # 1
 			"LabelChannel"  => "$hash->{'LabelChannel'}", # 1
-			"Position"  => $secondContigEnd + $positionOffset, # 20.0
+			"Position"  => $mergedLength, # 20.0
 			"StdDev" => "$hash->{'StdDev'}", # 81.9
 			"Coverage" => "$hash->{'Coverage'}", # 14.0
 			"Occurrence" => "$hash->{'Occurrence'}", # 14.0
@@ -316,24 +395,30 @@ elsif (($ARGV[2] eq '+' && $ARGV[4] eq '-')) {
 
 #IF orientation is -/+ 
 if (($ARGV[2] eq '-' && $ARGV[4] eq '+')) {
-	
+
 	#output REVERSED first contig
 	my @reverse_firstContig = reverse(@firstContig);
 	#print scalar(@reverse_firstContig)."\n";
-	for (my $i=1; $i < ($firstSites+1); $i++ ) {
+	for (my $i=(1+$firstContigSitesStartIdx); $i < (1+$firstContigSitesEndIdx); $i++ ) {
 		my $hash = $reverse_firstContig[$i];
+		
+		if ( ($firstContigEndOrig - $hash->{'Position'}) > ($firstContigEnd)) {
+			$doOutput = 0;
+			@firstContig = reverse(@reverse_firstContig);
+			last;
+		}
 		
 		my $theRest = $hash->{'TheRest'};
 		my @s = split("\t",$theRest);
 		$theRestCount = scalar(@s);		
-		$lastSite = ($firstSites - $hash->{'SiteID'}) + 1;
-		$lastPos = ($firstContigEnd - $hash->{'Position'});
+		$lastSite = ($firstContigSitesOrig - $hash->{'SiteID'}) + 1;
+		$lastPos = ($firstContigEndOrig - $hash->{'Position'});
 
 		my %new_hash_ref = (
 				"CMapId"  => "$mergedId", # 2020
 				"ContigLength" => "$mergedLength", # 718132.6
 				"NumSites"  => "$mergedSites", # 74
-				"SiteID"  => ($firstSitesOrig - $hash->{'SiteID'}) + 1, # 1
+				"SiteID"  => ($firstContigSitesOrig - $hash->{'SiteID'}) + 1, # 1
 				"LabelChannel"  => "$hash->{'LabelChannel'}", # 1
 				"Position"  => ($firstContigEndOrig - $hash->{'Position'}), # 20.0
 				"StdDev" => "$hash->{'StdDev'}", # 81.9
@@ -346,26 +431,39 @@ if (($ARGV[2] eq '-' && $ARGV[4] eq '+')) {
 			);		
 		push @mergedContig, \%new_hash_ref;	}
 		
-	my $sitesOffset = $firstSites; 
+	my $offset = $firstContigSites;
 	if ($missedLabelPadding != 0) {
 		my ($missedSite_ref, $missedLabelPos) = getMissedLabelHash($theRestCount, $missedLabelPadding, $lastPos, $lastSite);
 		my %missedSite = %$missedSite_ref;
 		push @mergedContig, \%missedSite; 
-		$sitesOffset = $sitesOffset + 1;
+		$offset = $offset + 1;
 	} 
 	
 	#output second contig
 	#my $positionOffset = $firstContigEnd + $missedLabelPadding + 1;
 	
-	for (my $i=$secondIdxStart; $i < ($secondSites+1+$secondSitesOffset); $i++ ) {
+	for (my $i=($secondContigSitesStartIdx); $i < ($secondContigSitesEndIdx+1); $i++ ) {
 		my $hash = $secondContig[$i];
+
+		my $pos = $hash->{'Position'} + $positionOffset - $forwardPosOffset + $reversePosOffset;
+		if ($i == $secondContigSitesEndIdx) {
+			$pos = $mergedLength;
+		}
+
+		if ($pos < $lastPos) {
+			@firstContig = reverse(@reverse_firstContig);
+			$doOutput = 0;
+			last;
+		}
+
 		my %new_hash_ref = (
 				"CMapId"  => "$mergedId", # 2020
 				"ContigLength" => "$mergedLength", # 718132.6
 				"NumSites"  => "$mergedSites", # 74
-				"SiteID"  => $hash->{'SiteID'} + $sitesOffset - $secondSitesOffset, # 1
+				"SiteID"  => $hash->{'SiteID'} + $offset - $forwardOffset, # 1
 				"LabelChannel"  => "$hash->{'LabelChannel'}", # 1
-				"Position"  => $hash->{'Position'} + $positionOffset, # 20.0
+				#"Position"  => $hash->{'Position'} + $positionOffset, # 20.0
+				"Position"  => $pos,
 				"StdDev" => "$hash->{'StdDev'}", # 81.9
 				"Coverage" => "$hash->{'Coverage'}", # 14.0
 				"Occurrence" => "$hash->{'Occurrence'}", # 14.0
@@ -383,22 +481,28 @@ if (($ARGV[2] eq '-' && $ARGV[4] eq '+')) {
 elsif (($ARGV[2] eq "-" && $ARGV[4] eq "-")) {
 	
 	#output REVERSED first contig
-	@firstContig = reverse(@firstContig);
+	my @firstContig_reverse = reverse(@firstContig);
 	
-	for (my $i=1; $i < ($firstSites+1); $i++ ) {
-		my $hash = $firstContig[$i];
+	for (my $i=(1+$firstContigSitesStartIdx); $i < (1+$firstContigSitesEndIdx); $i++ ) {
+		my $hash = $firstContig_reverse[$i];
+
+		if ( ($firstContigEndOrig - $hash->{'Position'}) > ($firstContigEnd)) {
+			@firstContig = reverse(@firstContig_reverse);
+			$doOutput = 0;
+			last;
+		}
 		
 		my $theRest = $hash->{'TheRest'};
 		my @s = split("\t",$theRest);
 		$theRestCount = scalar(@s);		
-		$lastSite = ($firstSites - $hash->{'SiteID'}) + 1;
-		$lastPos = ($firstContigEnd - $hash->{'Position'});
+		$lastSite = ($firstContigSitesOrig - $hash->{'SiteID'}) + 1;
+		$lastPos = ($firstContigEndOrig - $hash->{'Position'});
 
 		my %new_hash_ref = (
 				"CMapId"  => "$mergedId", # 2020
 				"ContigLength" => "$mergedLength", # 718132.6
 				"NumSites"  => "$mergedSites", # 74
-				"SiteID"  => ($firstSitesOrig - $hash->{'SiteID'}) + 1, # 1
+				"SiteID"  => ($firstContigSitesOrig - $hash->{'SiteID'}) + 1, # 1
 				"LabelChannel"  => "$hash->{'LabelChannel'}", # 1
 				"Position"  => ($firstContigEndOrig - $hash->{'Position'}), # 20.0
 				"StdDev" => "$hash->{'StdDev'}", # 81.9
@@ -411,35 +515,41 @@ elsif (($ARGV[2] eq "-" && $ARGV[4] eq "-")) {
 			);		
 		push @mergedContig, \%new_hash_ref;	}
 	
-	my $sitesOffset = $firstSites + 1; 
+	my $offset = $firstContigSites;
 	if ($missedLabelPadding != 0) {
 		my ($missedSite_ref, $missedLabelPos) = getMissedLabelHash($theRestCount, $missedLabelPadding, $lastPos, $lastSite);
 		my %missedSite = %$missedSite_ref;
 		push @mergedContig, \%missedSite; 
-		$sitesOffset = $sitesOffset + 1;
+		$offset = $offset + 1;
 	} 
 	
 	
 	#output REVERSED second contig
 	#my $positionOffset = $firstContigEnd + $missedLabelPadding;
-
-	if ($labelsDistance < 0) {
-		if ($firstQryConf < $secondQryConf) {
-			$positionOffset = $firstContigEnd;
-		}
-	}
-
 		
 	@secondContig = reverse(@secondContig);	
-	for (my $i=(1+$secondIdxStart); $i < ($secondSites+1+$secondIdxStart); $i++ ) {
+	if ($doOutput==0) {
+		@secondContig = reverse(@secondContig);
+	}
+
+	
+	for (my $i=(1+$secondContigSitesStartIdx); $i < (1+$secondContigSitesEndIdx); $i++ ) {
 		my $hash = $secondContig[$i];
+		my $pos = ($secondContigEndOrig - $hash->{'Position'}) + $positionOffset - $secondContigStart;
+		
+		if ($pos < $lastPos) {
+			$doOutput = 0;
+			@firstContig = reverse(@firstContig);
+			@secondContig = reverse(@secondContig);
+			last;
+		}
 		my %new_hash_ref = (
 				"CMapId"  => "$mergedId", # 2020
 				"ContigLength" => "$mergedLength", # 718132.6
 				"NumSites"  => "$mergedSites", # 74
-				"SiteID"  => ($secondSites - $hash->{'SiteID'}) + $sitesOffset, # 1
+				"SiteID"  => ($secondContigSitesOrig - $hash->{'SiteID'}) + $offset - $reverseOffset + 1, # 1
 				"LabelChannel"  => "$hash->{'LabelChannel'}", # 1
-				"Position"  => ($secondContigEnd - $hash->{'Position'}) + $positionOffset, # 20.0
+				"Position"  => $pos, # 20.0
 				"StdDev" => "$hash->{'StdDev'}", # 81.9
 				"Coverage" => "$hash->{'Coverage'}", # 14.0
 				"Occurrence" => "$hash->{'Occurrence'}", # 14.0
@@ -456,7 +566,7 @@ elsif (($ARGV[2] eq "-" && $ARGV[4] eq "-")) {
 			"NumSites"  => "$mergedSites", # 74
 			"SiteID"  => $mergedSites + 1, # 1
 			"LabelChannel"  => "$hash->{'LabelChannel'}", # 1
-			"Position"  => $secondContigEnd + $positionOffset, # 20.0
+			"Position"  => $mergedLength, # 20.0
 			"StdDev" => "$hash->{'StdDev'}", # 81.9
 			"Coverage" => "$hash->{'Coverage'}", # 14.0
 			"Occurrence" => "$hash->{'Occurrence'}", # 14.0
@@ -475,9 +585,21 @@ elsif (($ARGV[2] eq "-" && $ARGV[4] eq "-")) {
 #sort mergedContig by SiteID
 #my @sorted_mergedContig =  sort { $a->{SiteID} <=> $b->{SiteID} } @mergedContig;
 
-foreach (@mergedContig) { #change to @mergedContig
-	push @cmap_out, $_; 
+if ($doOutput == 1) {
+	foreach (@mergedContig) { #change to @mergedContig
+		push @cmap_out, $_; 
+	print "TRUE\n";
 	}
+}
+else {
+	#if ($firstQryConf >= $secondQryConf) {
+		push @cmap_out, @firstContig;
+	#}
+	#else {
+		push @cmap_out, @secondContig;
+	#}
+	print EXCLUDE "$ARGV[1]\t$ARGV[3]\n"
+}
 	
 foreach my $hash_ref (@cmap_out) {
 	# mod: eva chan, 9 july 2015
@@ -485,7 +607,8 @@ foreach my $hash_ref (@cmap_out) {
 	my $str = "";
 	if(defined($hash_ref->{'TheRest'}) && $hash_ref->{'TheRest'} ne "") { 
 		$str = "$hash_ref->{'CMapId'}\t$hash_ref->{'ContigLength'}\t$hash_ref->{'NumSites'}\t$hash_ref->{'SiteID'}\t$hash_ref->{'LabelChannel'}\t$hash_ref->{'Position'}\t$hash_ref->{'StdDev'}\t$hash_ref->{'Coverage'}\t$hash_ref->{'Occurrence'}\t$hash_ref->{'TheRest'}";
-	} else { 
+	} 
+	else { 
 		$str = "$hash_ref->{'CMapId'}\t$hash_ref->{'ContigLength'}\t$hash_ref->{'NumSites'}\t$hash_ref->{'SiteID'}\t$hash_ref->{'LabelChannel'}\t$hash_ref->{'Position'}\t$hash_ref->{'StdDev'}\t$hash_ref->{'Coverage'}\t$hash_ref->{'Occurrence'}";
 	}
 	print OUT "$str\n";	
@@ -497,10 +620,11 @@ rename $outName, $outName_orig;
 	
 		
 
-print "END OF OUTPUT mergeContigs.pl\n";
+#print "END OF OUTPUT mergeContigs.pl\n";
 
 close FILE;
 close OUT;
+close EXCLUDE;
 
 
 sub getMissedLabelHash {

@@ -2,7 +2,7 @@
 
 # A wrapper script to gap-fill: stitch together genome maps that are sufficiently close to each other and (optionally) overlapping fragile sites as predicted from reference genome map.
 
-# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n <CPU cores to use>] [--alignmolAnalysis alignmolAnalysisOut.txt] [--minRatio <minRatio for single molecules =0.70>] [--pvalue alignment pvalue <1e-12>]
+# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n <CPU cores to use>] [--alignmolAnalysis alignmolAnalysisOut.txt] [--minRatio <minRatio for single molecules =0.70>] [--pvalue alignment pvalue <1e-12>] [--MoleculesMode] [--MapsMode] [--RefAligner <path to RefAligner>] [--maxiter <maximum rounds to perform>]
 
 # Details: 
 # * Assumption: that contigs on XMAP is being read from left to right and is sorted by RefStartPos
@@ -31,7 +31,15 @@ print "\n";
 
 ## << usage statement and variable initialisation >>
 my %inputs = (); 
-GetOptions( \%inputs, 'x|xmap=s', 'q|qcmap=s', 'r|rcmap=s', 'e|errbin=s', 'o|output|prefix=s', 'bed|b:s', 'round:i', 'maxlab:i', 'maxfill:i', 'wobble:i', 'n:i', 'alignmolAnalysis=s', 'minRatio=s', 'maxOverlap:i', 'maxOverlapLabels:i', 'pvalue:s'); 
+GetOptions( \%inputs, 'x|xmap=s', 'q|qcmap=s', 'r|rcmap=s', 'e|errbin=s', 'o|output|prefix=s', 'bed|b:s', 'round:i', 'maxlab:i', 'maxfill:i', 'wobble:i', 'n:i', 'alignmolAnalysis=s', 'minRatio=s', 'maxOverlap:i', 'maxOverlapLabels:i', 'pvalue:s','MoleculesMode','MapsMode','RefAligner:s','maxiter:i'); 
+
+if ( (!$inputs{MapsMode} && !$inputs{MoleculesMode}) || ($inputs{MapsMode} && $inputs{MoleculesMode}) ) {
+	print "ERROR: --MapsMode OR --MoleculesMode must be specified!\n";
+	print qx/ps -o args $$/;
+	print "\n";
+	#Usage();
+	exit 1;
+}
 
 if( !exists $inputs{x} | !exists $inputs{q} | !exists $inputs{r} | !exists $inputs{e} | !exists $inputs{o} ) {
 	print "Usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n <CPU cores to use>] [--alignmolAnalysis alignmolAnalysisOut.txt] [--minRatio <minRatio for single molecules =0.70>] [--pvalue alignment pvalue <1e-12>]\n"; 
@@ -57,6 +65,10 @@ if( !exists $inputs{maxOverlap} || $inputs{maxOverlap}<0 ) { $inputs{maxOverlap}
 if( !exists $inputs{maxOverlapLabels} || $inputs{maxOverlapLabels}<0 ) { $inputs{maxOverlapLabels} = 5; }
 
 if( !exists $inputs{pvalue} ) { $inputs{pvalue} = "1e-12"; }
+
+if( !exists $inputs{maxiter} ) { $inputs{maxiter} = 10; }
+
+if (!exists $inputs{RefAligner}) { $inputs{RefAligner} = "$scriptspath/tools/RefAligner"; }
 
 
 open XMAP, $inputs{x} or die "ERROR: $!\n";
@@ -100,6 +112,9 @@ my @firstQryConfList = ();
 my @secondQryConfList = ();
 
 my $idOffset = 100000;
+if ( !exists $inputs{alignmolAnalysis}) {
+	$idOffset = 1000000000;
+}
 
 #get number of CPU cores
 my $info = Sys::Info->new;
@@ -107,7 +122,7 @@ my $cpu  = $info->device( CPU => my %options );
 #printf "There are %d CPUs\n"  , $cpu->count || 1;
 my $cpuCount = $cpu->count;
 #get system RAM
-my $mem = (((&totalmem / 1024) / 1024)) / 1024; 
+my $mem = int((((&totalmem / 1024) / 1024)) / 1024); 
 if( exists $inputs{n} ) { $cpuCount = $inputs{n}; }
 
 
@@ -216,6 +231,7 @@ print "\n";
 ## << read input reference CMAP >> 
 while (my $line = <RCMAP>) {
 	chomp($line);
+	$line =~ s/^\s+|\s+$//g;
 	#if header then skip
 	if ($line =~ /^#/) {
 		next; }
@@ -225,6 +241,7 @@ while (my $line = <RCMAP>) {
 		#load first contig into hash
 		##h CMapId	ContigLength	NumSites	SiteID	LabelChannel	Position	StdDev	Coverage	Occurrence	
 		#  2020	 718132.6	74	1	1	20.0	81.9	14.0	14.0	
+		$s[0] =~ s/^\s+|\s+$//g;
 		push @r_mapIds, $s[0];
 		my %cmap_line = (
 			"CMapId"  => "$s[0]",	#should be identical (only single contig in _r.cmap)
@@ -241,7 +258,7 @@ while (my $line = <RCMAP>) {
 }
 print "Read in $r_sites sites from $inputs{r}\n";
 @r_mapIds = unique(@r_mapIds);
-print "Read in ".scalar(@r_mapIds)." maps from $inputs{r}\n";
+print "Read in ".scalar(@r_mapIds)." maps Id: $r_mapIds[0] from $inputs{r}\n";
 if (scalar(@r_mapIds) > 1) {
 	die "ERROR: Input _r.cmap should have only 1 map\n"; }
 print "\n";
@@ -509,55 +526,56 @@ for (my $i=0; $i < scalar(@xmap); $i++) {
 										
 								next if ($firstQryContigID eq $previous);
 								
-								#generate new alignmol stats for newContig
-								print "\tNew alignmolAnalysis entry created\n";
-								my $firstRatio=0;
-								my $secondRatio=0;
-								my $newId = $firstQryContigID+$idOffset;
-								my $newStartRatio=0;
-								my $newEndRatio=0;
-								foreach my $alignmolEntry_ref (@alignmol) {
-								my %alignmolEntry = %$alignmolEntry_ref;
-									if ($alignmolEntry{CMapId} eq $firstQryContigID || $alignmolEntry{CMapId} eq $secondQryContigID) {
-										print "\t\tCmapID: $alignmolEntry{CMapId} StartRatio: $alignmolEntry{StartRatio} EndRatio: $alignmolEntry{EndRatio}\n";
+								#generate new alignmol stats for newContig if alignmolAnalysis.txt
+								if (exists $inputs{alignmolAnalysis}) {
+									print "\tNew alignmolAnalysis entry created\n";
+									my $firstRatio=0;
+									my $secondRatio=0;
+									my $newId = $firstQryContigID+$idOffset;
+									my $newStartRatio=0;
+									my $newEndRatio=0;
+									foreach my $alignmolEntry_ref (@alignmol) {
+									my %alignmolEntry = %$alignmolEntry_ref;
+										if ($alignmolEntry{CMapId} eq $firstQryContigID || $alignmolEntry{CMapId} eq $secondQryContigID) {
+											print "\t\tCmapID: $alignmolEntry{CMapId} StartRatio: $alignmolEntry{StartRatio} EndRatio: $alignmolEntry{EndRatio}\n";
+										}
+										if ($alignmolEntry{CMapId} eq $firstQryContigID) {
+											if ($firstOrientation eq "+") {
+												$firstRatio = $alignmolEntry{EndRatio};
+												$newStartRatio = $alignmolEntry{StartRatio};
+											}
+											else {
+												$firstRatio = $alignmolEntry{StartRatio};
+												$newStartRatio = $alignmolEntry{EndRatio};
+											}
+										}
+										elsif ($alignmolEntry{CMapId} eq $secondQryContigID) {
+											if ($secondOrientation eq "+") {
+												$secondRatio = $alignmolEntry{StartRatio};
+												$newEndRatio = $alignmolEntry{EndRatio};
+											}
+											else {
+												$secondRatio = $alignmolEntry{EndRatio};
+												$newEndRatio = $alignmolEntry{StartRatio};
+											}
+										}
 									}
-									if ($alignmolEntry{CMapId} eq $firstQryContigID) {
-										if ($firstOrientation eq "+") {
-											$firstRatio = $alignmolEntry{EndRatio};
-											$newStartRatio = $alignmolEntry{StartRatio};
-										}
-										else {
-											$firstRatio = $alignmolEntry{StartRatio};
-											$newStartRatio = $alignmolEntry{EndRatio};
-										}
-									}
-									elsif ($alignmolEntry{CMapId} eq $secondQryContigID) {
-										if ($secondOrientation eq "+") {
-											$secondRatio = $alignmolEntry{StartRatio};
-											$newEndRatio = $alignmolEntry{EndRatio};
-										}
-										else {
-											$secondRatio = $alignmolEntry{EndRatio};
-											$newEndRatio = $alignmolEntry{StartRatio};
-										}
-									}
+									my $out = "$inputs{alignmolAnalysis}";
+									open OUT, "+>>$out" or die "ERROR: Cannot open $out for writing! $!\n";
+									flock (OUT, LOCK_EX) or die "ERROR: Cannot open $out for locking! $!\n";
+									seek (OUT, 0, 2);
+									print OUT "$newId\t$newStartRatio\t$newEndRatio\n";
+									print "\tNewCmapID: $newId NewStartRatio: $newStartRatio NewEndRatio: $newEndRatio\n";
+									flock(OUT, LOCK_UN) or die "ERROR: Cannot unlock $out! $!\n";
+									close OUT;
+								
+									my %alignmol_line = (
+										"CMapId"  => "$newId",
+										"StartRatio" => "$newStartRatio", 
+										"EndRatio"  => "$newEndRatio"
+									);
+									push @alignmol, \%alignmol_line;
 								}
-								my $out = "$inputs{alignmolAnalysis}";
-								open OUT, "+>>$out" or die "ERROR: Cannot open $out for writing! $!\n";
-								flock (OUT, LOCK_EX) or die "ERROR: Cannot open $out for locking! $!\n";
-								seek (OUT, 0, 2);
-								print OUT "$newId\t$newStartRatio\t$newEndRatio\n";
-								print "\tNewCmapID: $newId NewStartRatio: $newStartRatio NewEndRatio: $newEndRatio\n";
-								flock(OUT, LOCK_UN) or die "ERROR: Cannot unlock $out! $!\n";
-								close OUT;
-								
-								my %alignmol_line = (
-									"CMapId"  => "$newId",
-									"StartRatio" => "$newStartRatio", 
-									"EndRatio"  => "$newEndRatio"
-								);
-								push @alignmol, \%alignmol_line;
-								
 								
 								push @firstContigList,$firstQryContigID;
 								push @secondContigList,$secondQryContigID;
@@ -752,7 +770,7 @@ for (my $i=0; $i<(scalar(@secondContigList)); $i++) {
 # Iterate over identified array list and merge contigs
 
 #my $nomerge = 0; 
-if (scalar(@secondContigList) > 0) {
+if (scalar(@secondContigList)>0 && $inputs{round}<=$inputs{maxiter}) {
 	if (scalar(@firstContigList) == scalar(@secondContigList)) {
 		print "Merging between ".scalar(@secondContigList)." maps\n\n";
 		
@@ -812,17 +830,25 @@ if (scalar(@secondContigList) > 0) {
 	my $veto = q/-output-veto-filter '(_intervals.txt|.err|.maprate|[a-z|A-Z].map)$'/;
 	#$veto = $veto." -output-veto-filter .err";
 	#print "Veto: $veto\n";
+	my $cmd ="";
+	
+
 
 	if ($inputs{round} == 1) {
 		# Perform first alignment round
 		print "=====  Performing round $inputs{round} alignment =====\n"; 
-		# system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T $inputs{pvalue} -BestRef 1 $veto -readparameters $inputs{e} -stdout -stderr");
-		
-		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T $inputs{pvalue} -BestRef 1 $veto -readparameters $inputs{e} -stdout");	
+		if ($inputs{MoleculesMode}) {
+			$cmd = "$inputs{RefAligner} -ref $inputs{r} -o $outName2 -i $outName -f -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP 1.5 -FN 0.15 -sd 0.0 -sf 0.2 -sr 0.03 -res 3.3 -readparameters $inputs{e} -T 1e-4 -L 100 -nosplit 2 -biaswt 0 -extend 1 -BestRef 1 -maptype 0 -PVres 2 -HSDrange 1.0 -f -deltaX 4 -deltaY 6 -outlierExtend 2 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -resEstimate -outlier 1e-5 -endoutlier 1e-5 -outlierMax 40. -maxEnd 0.005 -mres 0.9 -resbias 5.0 64 -MaxSE 0.5 -mres 0.9 -insertThreads 8 -rres 1.2 -maxmem $mem -NoBpp 2>&1";
+		}
+		elsif ($inputs{MapsMode}) {
+			$cmd = "$inputs{RefAligner} -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T $inputs{pvalue} -BestRef 1 $veto -readparameters $inputs{e} -stdout -stderr 2>&1";
+		}
+		print "\tRunning command: $cmd\n";	
+		system($cmd);
 		print "\nFIRST ROUND COMPLETE.\n\n";
 		
-		# Launch second round
-		# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round=1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>]
+		## Launch second round
+		## usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round=1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>]
 		print "******   Launching round 2 ******\n"; 
 		$outName2 =~ s/.xmap//g;
 		my %args = %inputs; 
@@ -841,11 +867,16 @@ if (scalar(@secondContigList) > 0) {
 	elsif ($inputs{round} == 2) {
 		# If second round, perform 2nd round of merge
 		print "======   Performing round $inputs{round} alignment ======= \n"; 
-		# system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName3 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T $inputs{pvalue} -BestRef 1 $veto -readparameters $inputs{e} -stdout -stderr");
-		#system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName3 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 2.9 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T $inputs{pvalue} -BestRef 1 $veto -readparameters $inputs{e} -stdout");	
-		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T $inputs{pvalue} -BestRef 1 $veto -readparameters $inputs{e} -stdout");			
+		if ($inputs{MoleculesMode}) {
+			$cmd = "$inputs{RefAligner} -ref $inputs{r} -o $outName2 -i $outName -f -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP 1.5 -FN 0.15 -sd 0.0 -sf 0.2 -sr 0.03 -res 3.3 -readparameters $inputs{e} -T 1e-4 -L 100 -nosplit 2 -biaswt 0 -extend 1 -BestRef 1 -maptype 0 -PVres 2 -HSDrange 1.0 -f -deltaX 4 -deltaY 6 -outlierExtend 2 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -resEstimate -outlier 1e-5 -endoutlier 1e-5 -outlierMax 40. -maxEnd 0.005 -mres 0.9 -resbias 5.0 64 -MaxSE 0.5 -mres 0.9 -insertThreads 8 -rres 1.2 -maxmem $mem -NoBpp 2>&1";
+		}
+		elsif ($inputs{MapsMode}) {
+			$cmd = "$inputs{RefAligner} -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T $inputs{pvalue} -BestRef 1 $veto -readparameters $inputs{e} -stdout -stderr 2>&1";
+		}
+		print "\tRunning command: $cmd\n";	
+		system($cmd);			
 		print "\nSECOND ROUND COMPLETE.\n\n";
-		#$inputs{round} = 0;
+		
 		
 		# Launch third round
 		# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round=1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>]
@@ -867,11 +898,18 @@ if (scalar(@secondContigList) > 0) {
 	elsif ($inputs{round} == 3) {
 		# If third round, perform 3rd round of merge
 		print "======   Performing round $inputs{round} alignment ======= \n"; 
-		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T $inputs{pvalue} -BestRef 1 $veto -readparameters $inputs{e} -stdout");			
+		if ($inputs{MoleculesMode}) {
+			$cmd = "$inputs{RefAligner} -ref $inputs{r} -o $outName2 -i $outName -f -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP 1.5 -FN 0.15 -sd 0.0 -sf 0.2 -sr 0.03 -res 3.3 -readparameters $inputs{e} -T 1e-4 -L 100 -nosplit 2 -biaswt 0 -extend 1 -BestRef 1 -maptype 0 -PVres 2 -HSDrange 1.0 -f -deltaX 4 -deltaY 6 -outlierExtend 2 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -resEstimate -outlier 1e-5 -endoutlier 1e-5 -outlierMax 40. -maxEnd 0.005 -mres 0.9 -resbias 5.0 64 -MaxSE 0.5 -mres 0.9 -insertThreads 8 -rres 1.2 -maxmem $mem -NoBpp 2>&1";
+		}
+		elsif ($inputs{MapsMode}) {
+			$cmd = "$inputs{RefAligner} -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T $inputs{pvalue} -BestRef 1 $veto -readparameters $inputs{e} -stdout -stderr 2>&1";
+		}	
+		print "\tRunning command: $cmd\n";	
+		system($cmd);			
 		print "\nTHIRD ROUND COMPLETE.\n\n";
-		# Launch third round
-		# usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round=1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>]
-		
+
+
+
 		# Launch fourth round
 		print "******   Launching round  4******\n"; 
 		$outName2 =~ s/.xmap//g;
@@ -891,7 +929,15 @@ if (scalar(@secondContigList) > 0) {
 	elsif ($inputs{round} == 4) {
 		# If fourth round, perform 4th round of merge
 		print "======   Performing round $inputs{round} alignment ======= \n"; 
-		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T $inputs{pvalue} -BestRef 1 $veto -readparameters $inputs{e} -stdout");	
+		if ($inputs{MoleculesMode}) {
+			$cmd = "$inputs{RefAligner} -ref $inputs{r} -o $outName2 -i $outName -f -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP 1.5 -FN 0.15 -sd 0.0 -sf 0.2 -sr 0.03 -res 3.3 -readparameters $inputs{e} -T 1e-4 -L 100 -nosplit 2 -biaswt 0 -extend 1 -BestRef 1 -maptype 0 -PVres 2 -HSDrange 1.0 -f -deltaX 4 -deltaY 6 -outlierExtend 2 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -resEstimate -outlier 1e-5 -endoutlier 1e-5 -outlierMax 40. -maxEnd 0.005 -mres 0.9 -resbias 5.0 64 -MaxSE 0.5 -mres 0.9 -insertThreads 8 -rres 1.2 -maxmem $mem -NoBpp 2>&1";
+		}
+		elsif ($inputs{MapsMode}) {
+			$cmd = "$inputs{RefAligner} -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T $inputs{pvalue} -BestRef 1 $veto -readparameters $inputs{e} -stdout -stderr 2>&1";
+		}	
+		print "\tRunning command: $cmd\n";	
+		system($cmd);			
+
 		print "\nFOURTH ROUND COMPLETE.\n\n";
 
 		# Launch fifth round
@@ -913,7 +959,14 @@ if (scalar(@secondContigList) > 0) {
 	elsif ($inputs{round} == 5) {
 		# If fifth round, perform 5th round of merge
 		print "======   Performing round $inputs{round} alignment ======= \n"; 
-		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T $inputs{pvalue} -BestRef 1 $veto -readparameters $inputs{e} -stdout");	
+		if ($inputs{MoleculesMode}) {
+			$cmd = "$inputs{RefAligner} -ref $inputs{r} -o $outName2 -i $outName -f -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP 1.5 -FN 0.15 -sd 0.0 -sf 0.2 -sr 0.03 -res 3.3 -readparameters $inputs{e} -T 1e-4 -L 100 -nosplit 2 -biaswt 0 -extend 1 -BestRef 1 -maptype 0 -PVres 2 -HSDrange 1.0 -f -deltaX 4 -deltaY 6 -outlierExtend 2 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -resEstimate -outlier 1e-5 -endoutlier 1e-5 -outlierMax 40. -maxEnd 0.005 -mres 0.9 -resbias 5.0 64 -MaxSE 0.5 -mres 0.9 -insertThreads 8 -rres 1.2 -maxmem $mem -NoBpp 2>&1";
+		}
+		elsif ($inputs{MapsMode}) {
+			$cmd = "$inputs{RefAligner} -ref $inputs{r} -i $outName -o $outName2 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T $inputs{pvalue} -BestRef 1 $veto -readparameters $inputs{e} -stdout -stderr 2>&1";
+		}	
+		print "\tRunning command: $cmd\n";	
+		system($cmd);			
 		print "\nFIFTH ROUND COMPLETE.\n\n";
 
 		# Launch sixth round
@@ -935,7 +988,15 @@ if (scalar(@secondContigList) > 0) {
 	elsif ($inputs{round} == 6) {
 		# If sixth round, perform 6th round of merge
 		print "======   Performing round $inputs{round} alignment ======= \n"; 
-		system("~/tools/RefAligner -ref $inputs{r} -i $outName -o $outName3 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T $inputs{pvalue} -BestRef 1 $veto -readparameters $inputs{e} -stdout");	
+		if ($inputs{MoleculesMode}) {
+			$cmd = "$inputs{RefAligner} -ref $inputs{r} -o $outName3 -i $outName -f -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP 1.5 -FN 0.15 -sd 0.0 -sf 0.2 -sr 0.03 -res 3.3 -readparameters $inputs{e} -T 1e-4 -L 100 -nosplit 2 -biaswt 0 -extend 1 -BestRef 1 -maptype 0 -PVres 2 -HSDrange 1.0 -f -deltaX 4 -deltaY 6 -outlierExtend 2 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -resEstimate -outlier 1e-5 -endoutlier 1e-5 -outlierMax 40. -maxEnd 0.005 -mres 0.9 -resbias 5.0 64 -MaxSE 0.5 -mres 0.9 -insertThreads 8 -rres 1.2 -maxmem $mem -NoBpp 2>&1";
+		}
+		elsif ($inputs{MapsMode}) {
+			$cmd = "$inputs{RefAligner} -ref $inputs{r} -i $outName -o $outName3 -maxthreads $cpuCount -res 2.9 -FP 0.6 -FN 0.06 -sf 0.20 -sd 0.10 -extend 1 -outlier 0.0001 -endoutlier 0.001 -deltaX 12 -deltaY 12 -xmapchim 14 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 50 -mres 0.5 -insertThreads 4 -nosplit 2 -biaswt 0 -f -maxmem $mem -T $inputs{pvalue} -BestRef 1 $veto -readparameters $inputs{e} -stdout -stderr 2>&1";
+		}	
+		print "\tRunning command: $cmd\n";	
+		system($cmd);			
+	
 		print "\nSIXTH ROUND COMPLETE.\n\n";
 	
 		exit 0; #If sixth round, exit script gracefully to return back to fifth round script to do more work	
@@ -959,6 +1020,12 @@ else {
 	}
 	elsif ($inputs{round}==4) {
 		print "\nFOURTH ROUND COMPLETE.\n\n";
+	}
+	elsif ($inputs{round}==5) {
+		print "\nFIFTH ROUND COMPLETE.\n\n";
+	}
+	elsif ($inputs{round}==6) {
+		print "\nSIXTH ROUND COMPLETE.\n\n";
 	}
 }
 
