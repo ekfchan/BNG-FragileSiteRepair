@@ -91,8 +91,8 @@ close BED;
 
 # Load alignref XMAP
 my $xmapFileIn = $inputs{xmap};
-my %xmap;
-share(%xmap) if $sharedmem;
+my @xmap;
+share(@xmap) if $sharedmem;
 my $alignments;
 my @xmap_format = qw{XmapEntryID  QryContigID  RefContigID  QryStartPos  QryEndPos  RefStartPos  RefEndPos  Orientation  Confidence  HitEnum  QryLen  RefLen  LabelChannel  Alignment};
 open XMAP, "$xmapFileIn" or die "ERROR: Could not open $xmapFileIn: $!\n";
@@ -104,11 +104,11 @@ while (my $line = <XMAP>) {
 	else {
 		$alignments++;
 		my ($arr_json, $ref_config_id) = get_arr_json_by_format($line, \@xmap_format);
-		if ($sharedmem && !defined($xmap{$ref_config_id})) {
+		if ($sharedmem && !defined($xmap[$ref_config_id])) {
 			my @a :shared = ();
-			$xmap{$ref_config_id} = \@a;
+			$xmap[$ref_config_id] = \@a;
 		}
-		push @{$xmap{$ref_config_id}}, $arr_json; 
+		push @{$xmap[$ref_config_id]}, $arr_json; 
 	}
 }
 print "Read in $alignments alignments from $xmapFileIn\n";
@@ -117,8 +117,8 @@ close XMAP;
 
 # Load alignref_final _q.cmap
 my $qcmapFileIn = $inputs{qcmap};
-my %qcmap;
-share(%qcmap) if $sharedmem;
+my @qcmap;
+share(@qcmap) if $sharedmem;
 my @cmap_format = qw{CMapId      ContigLength    NumSites        SiteID  LabelChannel    Position        StdDev  Coverage        Occurrence};
 open QCMAP, "$qcmapFileIn" or die "ERROR: Could not open $qcmapFileIn: $!\n";
 while (my $line = <QCMAP>) {
@@ -128,11 +128,11 @@ while (my $line = <QCMAP>) {
 		next; }
 	else {
 		my ($arr_json, $cmap_id) = get_arr_json_by_format($line, \@cmap_format, 0);
-		if ($sharedmem && !defined($qcmap{$cmap_id})) {
+		if ($sharedmem && !defined($qcmap[$cmap_id])) {
 			my @a :shared = ();
-			$qcmap{$cmap_id} = \@a;
+			$qcmap[$cmap_id] = \@a;
 		}
-		push @{$qcmap{$cmap_id}}, $arr_json;
+		push @{$qcmap[$cmap_id]}, $arr_json;
 	}
 }
 close QCMAP;
@@ -140,8 +140,8 @@ close QCMAP;
 
 # Load alignref_final _r.cmap
 my $rcmapFileIn = $inputs{rcmap};
-my %rcmap;
-share(%rcmap) if $sharedmem;
+my @rcmap;
+share(@rcmap) if $sharedmem;
 open RCMAP, "$rcmapFileIn" or die "ERROR: Could not open $rcmapFileIn: $!\n";
 while (my $line = <RCMAP>) {
 	chomp($line);
@@ -150,19 +150,19 @@ while (my $line = <RCMAP>) {
 		next; }
 	else {
 		my ($arr_json, $cmap_id) = get_arr_json_by_format($line, \@cmap_format, 0);
-		if ($sharedmem && !defined($rcmap{$cmap_id})) {
+		if ($sharedmem && !defined($rcmap[$cmap_id])) {
 			my @a :shared = ();
-			$rcmap{$cmap_id} = \@a;
+			$rcmap[$cmap_id] = \@a;
 		}
-		push @{$rcmap{$cmap_id}}, $arr_json;
+		push @{$rcmap[$cmap_id]}, $arr_json;
 	}
 }		
 close RCMAP; 
 
 # Load merged alignmol XMAP
 my $molxmapFileIn = $inputs{alignmolxmap};
-my %molxmap;
-share(%molxmap) if $sharedmem;
+my @molxmap;
+share(@molxmap) if $sharedmem;
 my $molalignments;
 open MOLXMAP, "$molxmapFileIn" or die "ERROR: Could not open $molxmapFileIn: $!\n";
 while (my $line = <MOLXMAP>) {
@@ -173,19 +173,19 @@ while (my $line = <MOLXMAP>) {
 	else {
 		$molalignments++;
 		my ($arr_json, $ref_config_id) = get_arr_json_by_format($line, \@xmap_format);
-                if ($sharedmem && !defined($molxmap{$ref_config_id})) {
+                if ($sharedmem && !defined($molxmap[$ref_config_id])) {
                         my @a :shared = ();
-                        $molxmap{$ref_config_id} = \@a;
+                        $molxmap[$ref_config_id] = \@a;
                 }
-		push @{$molxmap{$ref_config_id}}, $arr_json; 
+		push @{$molxmap[$ref_config_id]}, $arr_json; 
 	}
 }
 print "Read in $molalignments molecule alignments from $molxmapFileIn\n";
 
 # Load alignmol_r.cmap
 my $molrcmapFileIn = $inputs{alignmolrcmap};
-my %molrcmap;
-share(%molrcmap) if $sharedmem;
+my @molrcmap;
+share(@molrcmap) if $sharedmem;
 open MOLRCMAP, "$molrcmapFileIn" or die "ERROR: Could not open $molrcmapFileIn: $!\n";
 while (my $line = <MOLRCMAP>) {
 	chomp($line);
@@ -194,11 +194,11 @@ while (my $line = <MOLRCMAP>) {
 		next; }
 	else {
 		my ($arr_json, $cmap_id) = get_arr_json_by_format($line, \@cmap_format, 0);
-		if ($sharedmem && !defined($molrcmap{$cmap_id})) {
+		if ($sharedmem && !defined($molrcmap[$cmap_id])) {
 			my @a :shared = ();
-			$molrcmap{$cmap_id} = \@a;
+			$molrcmap[$cmap_id] = \@a;
 		}
-		push @{$molrcmap{$cmap_id}}, $arr_json;
+		push @{$molrcmap[$cmap_id]}, $arr_json;
 	}
 }		
 close MOLRCMAP; 
@@ -375,7 +375,7 @@ sub process_bed {
 	my $curPos=0;
 
 	# Get alignref _r.cmap label IDs that correspond to nearest labels to the left of the start and right of the end of the BED stitch locations 
-	foreach my $rcmapEntry_ref (defined($rcmap{$bedCmapId})?@{$rcmap{$bedCmapId}}:()) {
+	foreach my $rcmapEntry_ref (defined($rcmap[$bedCmapId])?@{$rcmap[$bedCmapId]}:()) {
 		my %rcmapEntry = %{get_hash_from_arr_json_by_format($rcmapEntry_ref, \@cmap_format)};
 		if ($rcmapEntry{'CMapId'} eq $bedCmapId) {
 			$curPos = $rcmapEntry{'Position'};
@@ -413,7 +413,7 @@ sub process_bed {
 	my $genomeMapEnd = 0;
 	my $genomeMapAvgCov=0;
 	
-	foreach my $xmapEntry_ref (defined($xmap{$bedCmapId})?@{$xmap{$bedCmapId}}:()) {
+	foreach my $xmapEntry_ref (defined($xmap[$bedCmapId])?@{$xmap[$bedCmapId]}:()) {
 		my %xmapEntry = %{get_hash_from_arr_json_by_format($xmapEntry_ref, \@xmap_format)};		
 		if ($xmapEntry{'RefContigID'} eq $bedCmapId) {
 			my $line = $xmapEntry{'Alignment'};
@@ -445,7 +445,7 @@ sub process_bed {
 	
 	# find corresponding genome map if no alignemnts containing exact flanking labels of genome map
 	if ($genomeMapId == 0) {
-		foreach my $xmapEntry_ref (defined($xmap{$bedCmapId})?@{$xmap{$bedCmapId}}:()) {
+		foreach my $xmapEntry_ref (defined($xmap[$bedCmapId])?@{$xmap[$bedCmapId]}:()) {
 			my %xmapEntry = %{get_hash_from_arr_json_by_format($xmapEntry_ref, \@xmap_format)};		
 			if ($xmapEntry{'RefContigID'} eq $bedCmapId) {
 				my $line = $xmapEntry{'Alignment'};
@@ -480,7 +480,7 @@ sub process_bed {
 	}	
 				
 	# loop thru _q.cmap to find coordinates of identified genome map labels
-	foreach my $qcmapEntry_ref (defined($qcmap{$genomeMapId})?@{$qcmap{$genomeMapId}}:()) {
+	foreach my $qcmapEntry_ref (defined($qcmap[$genomeMapId])?@{$qcmap[$genomeMapId]}:()) {
 		my %qcmapEntry = %{get_hash_from_arr_json_by_format($qcmapEntry_ref, \@cmap_format)};
 		if ($qcmapEntry{'CMapId'} eq $genomeMapId) {
 			#if (exists $matchPairs{$bedStartLabelId} && exists $matchPairs{$bedEndLabelId}) {
@@ -509,7 +509,7 @@ sub process_bed {
 	
 	# loop thru molrcmap to get average coverage of genome map by single molecules
 	my $count = 0;
-	foreach my $molrcmapEntry_ref (defined($molrcmap{$genomeMapId})?@{$molrcmap{$genomeMapId}}:()) {
+	foreach my $molrcmapEntry_ref (defined($molrcmap[$genomeMapId])?@{$molrcmap[$genomeMapId]}:()) {
 		my %molrcmapEntry = %{get_hash_from_arr_json_by_format($molrcmapEntry_ref, \@cmap_format)};
 		if (($molrcmapEntry{'CMapId'} eq $genomeMapId) && (defined $molrcmapEntry{'SiteID'}) && (defined $matchPairs{$bedStartLabelId} && defined $matchPairs{$bedEndLabelId}) )  {
 			if ( ($molrcmapEntry{'SiteID'} < $matchPairs{$bedStartLabelId}) || ($molrcmapEntry{'SiteID'} > $matchPairs{$bedEndLabelId}) ) {
@@ -552,7 +552,7 @@ sub process_bed {
 	my %confHash;
 	
 	# scan alignmol xmap to find molecules that align to identified genome map label IDs
-	MOLLOOP: foreach my $molxmapEntry_ref (defined($molxmap{$genomeMapId})?@{$molxmap{$genomeMapId}}:()) {
+	MOLLOOP: foreach my $molxmapEntry_ref (defined($molxmap[$genomeMapId])?@{$molxmap[$genomeMapId]}:()) {
 		#print "Alignmol Loop:\n";
 		my %molxmapEntry = %{get_hash_from_arr_json_by_format($molxmapEntry_ref, \@xmap_format)};
 		if ($molxmapEntry{'RefContigID'} eq $genomeMapId ) {

@@ -24,11 +24,14 @@ use Sys::Info;
 use Sys::Info::Constants qw( :device_cpu );
 use Sys::MemInfo qw(totalmem freemem totalswap);
 use Fcntl qw(:flock SEEK_END);
-use File::Tee qw(tee);
+
+print "\n";
+print qx/ps -o args $$/;
+print "\n";
 
 ## << usage statement and variable initialisation >>
 my %inputs = (); 
-GetOptions( \%inputs, 'x|xmap=s', 'q|qcmap=s', 'r|rcmap=s', 'e|errbin=s', 'o|output|prefix=s', 'bed|b:s', 'round:i', 'maxlab:i', 'maxfill:i', 'wobble:i', 'n:i', 'alignmolAnalysis=s', 'minRatio=s', 'maxOverlap:i', 'maxOverlapLabels:i', 'pvalue:s','MoleculesMode','MapsMode','RefAligner:s','maxiter:i','molStats:s','err=s', 'excludeList:s', 'stdout:s'); 
+GetOptions( \%inputs, 'x|xmap=s', 'q|qcmap=s', 'r|rcmap=s', 'e|errbin=s', 'o|output|prefix=s', 'bed|b:s', 'round:i', 'maxlab:i', 'maxfill:i', 'wobble:i', 'n:i', 'alignmolAnalysis=s', 'minRatio=s', 'maxOverlap:i', 'maxOverlapLabels:i', 'pvalue:s','MoleculesMode','MapsMode','RefAligner:s','maxiter:i','molStats:s','err=s', 'excludeList:s'); 
 
 if ( (!$inputs{MapsMode} && !$inputs{MoleculesMode}) || ($inputs{MapsMode} && $inputs{MoleculesMode}) ) {
 	print "ERROR: --MapsMode OR --MoleculesMode must be specified!\n";
@@ -37,23 +40,6 @@ if ( (!$inputs{MapsMode} && !$inputs{MoleculesMode}) || ($inputs{MapsMode} && $i
 	#Usage();
 	exit 1;
 }
-
-if (defined $inputs{stdout}) {
-	if (exists $inputs{stdout} && -e $inputs{stdout}) {
-		tee(STDOUT, '>>', "$inputs{stdout}");
-		tee(STDERR, '>>', "$inputs{stdout}");
-	}
-}
-else {
-	$inputs{stdout} = $inputs{q}; 
-	$inputs{stdout} =~ s/_q.cmap/_fragileSiteRepaired_gapFill_temp_log.txt/g;
-	tee(STDOUT, '>', "$inputs{stdout}");
-	tee(STDERR, '>', "$inputs{stdout}");
-}
-
-print "\n";
-print qx/ps -o args $$/;
-print "\n";
 
 if( !exists $inputs{x} | !exists $inputs{q} | !exists $inputs{r} | !exists $inputs{e} | !exists $inputs{o} ) {
 	print "Usage: perl gapFill.pl -x <input.xmap> -q <input_q.cmap> -r <input_r.cmap> -e <input.errbin> -o <output_prefix> [--bed <.bed fragile sites file>] [--round <start_round    =1>] [--maxlab <max_label_gap_tolerence=0>] [--maxfill <max basepairs to fill between contigs = 35000>] [--wobble <fragile site wobble in bp = 0>] [--n <CPU cores to use>] [--alignmolAnalysis alignmolAnalysisOut.txt] [--minRatio <minRatio for single molecules =0.70>] [--pvalue alignment pvalue <1e-12>]\n"; 
@@ -140,9 +126,9 @@ my @labelsDistanceList = ();
 my @firstQryConfList = ();
 my @secondQryConfList = ();
 
-my $idOffset = 1000000;
+my $idOffset = 1000000000000;
 if ( !exists $inputs{alignmolAnalysis}) {
-	$idOffset = 1000000000;
+	$idOffset = 10000000000000;
 }
 
 #get number of CPU cores
@@ -447,7 +433,7 @@ ILOOP: for (my $i=0; $i < (scalar(@xmap)-1); $i++) {
 		my $secondQryConf = $xmap[$j]->{'Confidence'};
 
 		my $posDistance = $secondRefStartPos - $firstRefEndPos;
-		print "\nConsidering merge between XmapEntryID: $id1 QryContigID: $firstQryContigID and XmapEntryID: $id2 QryContigID: $secondQryContigID Distance: $posDistance RefPos: $firstRefStartPos RefLen: $reflen Complete: ".(100*sprintf("%.4f", ($firstRefStartPos/$reflen)))."%\n";
+		print "\nConsidering merge between XmapEntryID: $id1 QryContigID: $firstQryContigID and XmapEntryID: $id2 QryContigID: $secondQryContigID Distance: $posDistance RefPos: $firstRefStartPos RefLen: $reflen Complete: ".(100*sprintf("%.2f", ($firstRefStartPos/$reflen)))."%\n";
 
 		if ( (grep {$_ eq $firstQryContigID} @firstContigList) || (grep {$_ eq $firstQryContigID} @secondContigList) ) {
 			print "\tFirst contig $firstQryContigID already ID'ed to be merged...\n\n";
@@ -881,7 +867,7 @@ if (scalar(@secondContigList)>0 && $inputs{round}<=$inputs{maxiter}) {
 		my $cwd = cwd();
 		print "Running command: ".$^X." $extractScript ". join(" ",@ARGS)."\n";
 		system($^X, "$extractScript", @ARGS);
-		print "\n\tQryContigID $firstContigList[0] merged with QryContigID $secondContigList[0] into QueryContigID ".($firstContigList[0]+$idOffset)." Complete: ".(100*sprintf("%.4f",(0/scalar(@secondContigList))))."%\n";
+		print "\n\tQryContigID $firstContigList[0] merged with QryContigID $secondContigList[0] into QueryContigID ".($firstContigList[0]+$idOffset)." Complete: ".(100*sprintf("%.2f",(0/scalar(@secondContigList))))."%\n";
 		print "\n";
 		
 		my $temp = $secondContigList[0];
@@ -905,7 +891,7 @@ if (scalar(@secondContigList)>0 && $inputs{round}<=$inputs{maxiter}) {
 			push @ARGS, $inputs{excludeList};
 			print "Running command: ".$^X." $extractScript ". join(" ",@ARGS)."\n";
 			system($^X, "$extractScript", @ARGS);
-			print "\n\tQryContigID $firstContigList[$i] merged with QryContigID $secondContigList[$i] into QueryContigID ".($firstContigList[$i]+$idOffset)." Complete: ".(100*sprintf("%.4f",($i/scalar(@secondContigList))))."%\n";
+			print "\n\tQryContigID $firstContigList[$i] merged with QryContigID $secondContigList[$i] into QueryContigID ".($firstContigList[$i]+$idOffset)." Complete: ".(100*sprintf("%.2f",($i/scalar(@secondContigList))))."%\n";
 			print "\n";
 		}	
 	}
@@ -927,9 +913,9 @@ if (scalar(@secondContigList)>0 && $inputs{round}<=$inputs{maxiter}) {
 		print "=====  Performing round $inputs{round} alignment =====\n"; 
 		if ($inputs{MoleculesMode}) {
 			# without hashing
-			#$cmd = "$inputs{RefAligner} -ref $inputs{r} -o $outName2 -i $outName -f -NoBpp -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP 1.5 -FN 0.15 -sd 0.0 -sf 0.2 -sr 0.03 -res 3.3 -readparameters $inputs{e} -T $inputs{pvalue} -L 100 -nosplit 2 -biaswt 0 -extend 1 -BestRef 1 -PVres 2 -HSDrange 1.0 -f -deltaX 4 -deltaY 6 -outlierExtend 2 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -outlier 1e-5 -I 20 -endoutlier 0.9 -E 0 -outlierMax 20. -resbias 5.0 64 -MaxSE 0.5 -insertThreads 8 -mres 0.9 -rres 1.2 $veto -XmapStatRead $inputs{molStats} -maptype 0 -maxmem $mem -unmapped ".$outName2."_unmapped -mapped ".$outName2."_mapped"; 
+			#$cmd = "$inputs{RefAligner} -ref $inputs{r} -o $outName2 -i $outName -f -NoBpp -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP 1.5 -FN 0.15 -sd 0.0 -sf 0.2 -sr 0.03 -res 3.3 -readparameters $inputs{e} -T $inputs{pvalue} -L 100 -nosplit 2 -biaswt 0 -extend 1 -BestRef 1 -PVres 2 -HSDrange 1.0 -f -deltaX 4 -deltaY 6 -outlierExtend 2 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -outlier 1e-3 -I 20 -endoutlier 0.9 -E 0 -outlierMax 20. -resbias 5.0 64 -MaxSE 0.5 -insertThreads 8 -mres 0.9 -rres 1.2 $veto -XmapStatRead $inputs{molStats} -maptype 0 -maxmem $mem -unmapped ".$outName2."_unmapped -mapped ".$outName2."_mapped"; 
 
-			$cmd = "$inputs{RefAligner} -ref $inputs{r} -o $outName2 -i $outName -f -bpp 500 -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP $err{FP} -FN $err{FN} -sd $err{sd} -sf $err{sf} -sr $err{sr} -res $err{res} -resSD $err{resSD} -se $err{se} -T $inputs{pvalue} -mres $err{mres} -mresSD $err{mresSD} -L 100 -nosplit 2 -biaswt 0 -extend 1 -BestRef 1 -PVres 2 -HSDrange 1.0 -f -deltaX 4 -deltaY 6 -outlierExtend 2 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -outlier 1e-5 -I 20 -endoutlier 0.9 -E 0 -outlierMax 20. -resbias 5.0 64 -MaxSE 0.5 -insertThreads 8 -rres 1.2 $veto -XmapStatRead $inputs{molStats} -maptype 0 -maxmem $mem -unmapped ".$outName2."_unmapped -mapped ".$outName2."_mapped"; 
+			$cmd = "$inputs{RefAligner} -ref $inputs{r} -o $outName2 -i $outName -f -bpp 500 -stdout -stderr -maxthreads $cpuCount -usecolor 1 -FP $err{FP} -FN $err{FN} -sd $err{sd} -sf $err{sf} -sr $err{sr} -res $err{res} -resSD $err{resSD} -se $err{se} -T $inputs{pvalue} -mres $err{mres} -mresSD $err{mresSD} -L 100 -nosplit 2 -biaswt 0 -extend 1 -BestRef 1 -PVres 2 -HSDrange 1.0 -f -deltaX 4 -deltaY 6 -outlierExtend 2 -RepeatMask 2 0.01 -RepeatRec 0.7 0.6 1.4 -outlier 1e-3 -I 20 -endoutlier 0.9 -E 0 -outlierMax 20. -resbias 5.0 64 -MaxSE 0.5 -insertThreads 8 -rres 1.2 $veto -XmapStatRead $inputs{molStats} -maptype 0 -maxmem $mem -unmapped ".$outName2."_unmapped -mapped ".$outName2."_mapped"; 
 			# with hashing
 			$cmd = $cmd ." -hashoffset 1 -hashMultiMatch 20 -hashgen 5 3 2.4 1.5 0.05 5.0 1 1 1 -hash -hashdelta 10";
 

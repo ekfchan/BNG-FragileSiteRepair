@@ -352,7 +352,7 @@ elsif (($ARGV[2] eq '+' && $ARGV[4] eq '-')) {
 		my $hash = $secondContig[$i];
 		
 		my $pos = ($secondContigEndOrig - $hash->{'Position'}) + $positionOffset - $secondContigStart;
-		if ($pos < $lastPos && $doOutput!=0) {
+		if ($pos < $lastPos) {
 			$doOutput = 0;
 			@secondContig = reverse(@secondContig);
 			last;
@@ -450,7 +450,7 @@ if (($ARGV[2] eq '-' && $ARGV[4] eq '+')) {
 			$pos = $mergedLength;
 		}
 
-		if ($pos < $lastPos && $doOutput!=0) {
+		if ($pos < $lastPos) {
 			@firstContig = reverse(@reverse_firstContig);
 			$doOutput = 0;
 			last;
@@ -537,16 +537,12 @@ elsif (($ARGV[2] eq "-" && $ARGV[4] eq "-")) {
 		my $hash = $secondContig[$i];
 		my $pos = ($secondContigEndOrig - $hash->{'Position'}) + $positionOffset - $secondContigStart;
 		
-		if ($pos < $lastPos && $doOutput!=0) {
-			@firstContig = reverse(@firstContig_reverse); 
-			@secondContig = reverse(@secondContig);
+		if ($pos < $lastPos) {
 			$doOutput = 0;
+			@firstContig = reverse(@firstContig);
+			@secondContig = reverse(@secondContig);
 			last;
 		}
-		elsif ($doOutput==0) {
-			last;
-		}
-		
 		my %new_hash_ref = (
 				"CMapId"  => "$mergedId", # 2020
 				"ContigLength" => "$mergedLength", # 718132.6
