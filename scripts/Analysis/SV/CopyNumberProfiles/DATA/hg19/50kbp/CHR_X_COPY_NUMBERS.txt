@@ -1,7 +1,0 @@
-Gender	Aneuploidy	Karyotype	Chromosome	Median	MAD	Mean	SD
-Female	Euploid	XX	X	2.0	0.2	2.0	0.4
-Female	Turner	X	X	1.0	0.2	1.0	0.2
-Female	TripleX	XXX	X	3.0	0.2	3.0	0.2
-Male	Euploid	XY	X	1.0	0.2	1.0	0.2
-Male	Jacobs	XYY	X	1.0	0.2	1.0	0.2
-Male	Klinefelter	XXY	X	2.0	0.2	2.0	0.2
